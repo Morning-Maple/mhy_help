@@ -1,0 +1,9 @@
+{
+  "mode": [
+    {
+      "mode": "Types.ModeType.QSSD",
+      "detail": "Types.QSSDMode.SF",
+      "round": 2
+    }
+  ]
+}
