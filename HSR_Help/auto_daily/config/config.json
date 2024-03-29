@@ -5,5 +5,12 @@
       "detail": "Types.QSSDMode.SF",
       "round": 2
     }
-  ]
+  ],
+  "project": {
+    "wt": 0,
+    "xl": 0,
+    "fb": 0,
+    "sx_q_email": 0
+  },
+  "button": "f1"
 }
