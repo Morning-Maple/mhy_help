@@ -55,8 +55,10 @@ class NZHECMode(Enum):
     HM_SRCD = ('毁灭_收容舱段', 'image/text_NZHEC_HM_SRCD.png')
     HM_LYJ = ('毁灭_鳞渊境', 'image/text_NZHEC_HM_LYJ.png')
     CH_ZYCD = ('存护_支援舱段', 'image/text_NZHEC_CH_ZYCD.png')
+    CH_KLKYSLY = ('存护_克劳克影视乐园', 'image/text_NZHEC_CH_KLKYSLY.png')
     XL_CJXY = ('巡猎_城郊雪原', 'image/text_NZHEC_XL_CJXY.png')
     FR_BYTL = ('丰饶_边缘通路', 'image/text_NZHEC_FR_BYTL.png')
+    FR_SY = ('丰饶_绥园', 'image/text_NZHEC_FR_SY.png')
     ZS_MDZ = ('智识_铆钉镇', 'image/text_NZHEC_ZS_MDZ.png')
     TX_JXJL = ('同谐_机械聚落', 'image/text_NZHEC_TX_JXJL.png')
     TX_BRMJD_MJ = ('同谐_白日梦酒店_梦境', 'image/text_NZHEC_TX_BRMJD_MJ.png')
@@ -92,6 +94,7 @@ class NZXYMode(Enum):
     YF = ('幽府之形', 'image/text_NZXY_YF.png')
     BN = ('冰酿之形', 'image/text_NZXY_BN.png')
     JZ = ('焦炙之形', 'image/text_NZXY_JZ.png')
+    CN = ('嗔怒之形', 'image/text_NZXY_CN.png')
 
     def __init__(self, desc, path):
         self.desc = desc
