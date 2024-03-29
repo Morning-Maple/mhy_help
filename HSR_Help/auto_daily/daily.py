@@ -41,12 +41,8 @@ def auto_do_daily():
 
     check_window()
     time.sleep(0.5)  # 等待窗口激活
-    # default_way()
+    default_way()
     time.sleep(2)
-
-    res = xl()
-    if res:
-        return True
 
     project = config["mode"]
     if project is None:

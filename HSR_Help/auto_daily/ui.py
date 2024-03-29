@@ -11,7 +11,7 @@ class App:
         self.root.geometry('800x600')
 
         # 读取配置文件
-        with open('default_config.json', 'r') as f:
+        with open('config/default_config.json', 'r') as f:
             self.config = json.load(f)
 
         # 设置UI组件
