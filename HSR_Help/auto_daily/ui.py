@@ -20,12 +20,12 @@ class MainWindow(QMainWindow):
         with open('config/config.json', 'r', encoding='utf-8') as f2:
             config = json.load(f2)
 
-        # 创建主窗口的中心部件和布局
+        # 主窗口的中心部件和布局
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QHBoxLayout()
 
-        # --创建左侧的工具区域
+        # --左侧的工具区域
         left_widget = QWidget()
         left_layout = QGridLayout()
 
@@ -39,13 +39,19 @@ class MainWindow(QMainWindow):
         resolution_layout.addWidget(resolution_combobox, 100)
         left_layout.addLayout(resolution_layout, 0, 0)
 
-        # 复选框
+        # 功能复选框
         checkbox_group_layout = QHBoxLayout()
         project_label = QLabel("功能：")
         challenge_checkbox = QCheckBox("副本挑战")
         delegate_checkbox = QCheckBox("委托派遣")
         honor_checkbox = QCheckBox("无名勋礼")
         misc_checkbox = QCheckBox("杂项（实训、邮件和助战奖励）")
+        # 根据配置设置复选框的状态
+        challenge_checkbox.setChecked(config["project"]["fb"] == 1)
+        delegate_checkbox.setChecked(config["project"]["wt"] == 1)
+        honor_checkbox.setChecked(config["project"]["xl"] == 1)
+        misc_checkbox.setChecked(config["project"]["sx_q_email"] == 1)
+
         checkbox_group_layout.addWidget(project_label)
         checkbox_group_layout.addWidget(challenge_checkbox)
         checkbox_group_layout.addWidget(delegate_checkbox)
@@ -53,26 +59,29 @@ class MainWindow(QMainWindow):
         checkbox_group_layout.addWidget(misc_checkbox)
         left_layout.addLayout(checkbox_group_layout, 1, 0)
 
+        # 副本挑战时是否需要暂停以查看遗器属性
         fb_extra_layout = QHBoxLayout()
         fb_extra_func = QCheckBox("是否需要暂停查看遗器属性？（仅限侵蚀隧洞和历战余响，一秒内双击空格以继续）")
+        fb_extra_func.setChecked(config["waitCheck"] == 1)
         fb_extra_layout.addWidget(fb_extra_func)
         left_layout.addLayout(fb_extra_layout, 2, 0)
 
+        # 呼起星际和平指南的快捷键的快捷键
         button_extra_layout = QHBoxLayout()
         button_label = QLabel("呼起星际和平指南的快捷键：")
         button_dropdown = QComboBox()
         for i in range(1, 13):
             button_dropdown.addItem(f"F{i}", f"f{i}")
-        button_dropdown.setCurrentText("F1")
+        button_dropdown.setCurrentText(config["button"].upper())
         button_extra_layout.addWidget(button_label)
         button_extra_layout.addWidget(button_dropdown)
         left_layout.addLayout(button_extra_layout, 3, 0)
 
         # 副本挑战选中的时候出现复选框
         add_button = QPushButton("新增")
-        add_button.setEnabled(False)
+        add_button.setEnabled(config["project"]["fb"] == 1)
         remove_all_button = QPushButton("去除全部")
-        remove_all_button.setEnabled(False)
+        remove_all_button.setEnabled(config["project"]["fb"] == 1)
         fb_buttons_layout = QHBoxLayout()
         fb_buttons_layout.addWidget(add_button)
         fb_buttons_layout.addWidget(remove_all_button)
@@ -81,26 +90,28 @@ class MainWindow(QMainWindow):
         challenge_container = QWidget()
         challenge_layout = QVBoxLayout()
         challenge_container.setLayout(challenge_layout)
-
-        scroll_area = QScrollArea()  # 创建一个 QScrollArea
-        scroll_area.setWidgetResizable(True)  # 设置为可调整大小
-        scroll_area.setWidget(challenge_container)  # 将 challenge_container 设置为 scroll_area 的子控件
-        scroll_area.setEnabled(False)  # 初始时禁用
+        # 滚动条
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setWidget(challenge_container)
+        scroll_area.setEnabled(config["project"]["fb"] == 1)
 
         def challenge_checkbox_changed(state):
+            """当选中副本挑战的选项时才能被添加额外的行"""
             add_button.setEnabled(state == Qt.CheckState.Checked.value)
             remove_all_button.setEnabled(state == Qt.CheckState.Checked.value)
             scroll_area.setEnabled(state == Qt.CheckState.Checked.value)
 
         challenge_checkbox.stateChanged.connect(challenge_checkbox_changed)
 
-        # 添加一个弹性空间
+        # 添加一个弹性空间以确保内容从上往下添加
         challenge_layout.addStretch()
         # 副本挑战选项容器
         left_layout.addWidget(scroll_area, 5, 0)
 
         # 添加行的函数
-        def add_challenge_row():
+        def add_challenge_row(mode_entry=None):
+            """新增副本行"""
             row_layout = QHBoxLayout()
             dropdown_a = QComboBox()
             dropdown_a.addItem("请选择", None)
@@ -115,6 +126,7 @@ class MainWindow(QMainWindow):
                 dropdown_a.addItem(mode.desc, mode)  # 使用枚举的名称作为显示文本，枚举本身作为数据
 
             def dropdown_a_changed(index):
+                """首下拉框有值后，才给次下拉框赋值"""
                 dropdown_b.clear()
                 modes = dropdown_a.itemData(index)  # 获取选中的枚举值
                 match modes:
@@ -160,8 +172,23 @@ class MainWindow(QMainWindow):
             row_layout.addWidget(remove_button)
             challenge_layout.insertLayout(0, row_layout)
 
+            # 首次读取时沿用配置文件中的内容
+            if mode_entry:
+                mode_type = getattr(Types.ModeType, mode_entry["mode"].split(".")[-1])
+                detail_type = getattr(getattr(Types, mode_entry["mode"].split(".")[-1] + "Mode"),
+                                      mode_entry["detail"].split(".")[-1])
+                dropdown_a.setCurrentIndex(dropdown_a.findData(mode_type))
+                dropdown_b.setCurrentIndex(dropdown_b.findData(detail_type))
+                spinbox.setValue(mode_entry["round"])
+
+        # 沿用配置文件中的内容
+        for mode_data in config["mode"]:
+            add_challenge_row(mode_data)
+        logger.info(">>>> 读取上一次配置成功")
+
         # 移除所有行
         def remove_all_row():
+            """一键移除所有行"""
             for ii in reversed(range(challenge_layout.count())):
                 layout_item = challenge_layout.itemAt(ii)
                 if layout_item.layout() is not None:  # 检查该项是否为布局
@@ -184,15 +211,16 @@ class MainWindow(QMainWindow):
         bottom_buttons_layout.addWidget(start_execution_button)
         left_layout.addLayout(bottom_buttons_layout, 6, 0)  # 将底部按钮布局添加到左侧布局中
 
-        # 保存配置按钮的点击事件处理函数
+        # 保存配置
         def save_config():
-            # 更新分辨率
+            """保存配置"""
+            # 分辨率
             config["resolution"] = resolution_combobox.currentText()
 
-            # 更新是否需要暂停查看遗器属性
+            # 是否需要暂停查看遗器属性
             config["waitCheck"] = 1 if fb_extra_func.isChecked() else 0
 
-            # 更新项目设置
+            # 项目
             config["project"] = {
                 "wt": 1 if delegate_checkbox.isChecked() else 0,
                 "fb": 1 if challenge_checkbox.isChecked() else 0,
@@ -200,7 +228,7 @@ class MainWindow(QMainWindow):
                 "sx_q_email": 1 if misc_checkbox.isChecked() else 0
             }
 
-            # 更新呼起星际和平指南的快捷键
+            # 呼起星际和平指南的快捷键
             config["button"] = button_dropdown.currentText().lower()
 
             # 副本挑战的配置
@@ -229,7 +257,7 @@ class MainWindow(QMainWindow):
 
         save_config_button.clicked.connect(save_config)
 
-        # 开始执行按钮的点击事件处理函数
+        # 开始执行
         def start_execution():
             # 在这里添加开始执行的逻辑
             pass
@@ -266,7 +294,7 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(update_log_content)
         self.timer.start(200)  # 每0.2秒更新一次
 
-        # 主布局中
+        # --主布局中
         main_layout.addWidget(left_widget, 1)
         main_layout.addWidget(right_widget, 1)
 
