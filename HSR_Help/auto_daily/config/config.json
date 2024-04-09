@@ -1,16 +1,23 @@
 {
   "mode": [
     {
-      "mode": "Types.ModeType.QSSD",
-      "detail": "Types.QSSDMode.SF",
-      "round": 2
+      "mode": "Types.ModeType.NZXY",
+      "detail": "Types.NZXYMode.SJ",
+      "round": 1
+    },
+    {
+      "mode": "Types.ModeType.NZHEJ",
+      "detail": "Types.NZHEJMode.YLL6_JYCL",
+      "round": 3
     }
   ],
+  "resolution": "1920x1080",
+  "waitCheck": 0,
   "project": {
-    "wt": 0,
-    "xl": 0,
-    "fb": 0,
-    "sx_q_email": 0
+    "wt": 1,
+    "fb": 1,
+    "xl": 1,
+    "sx_q_email": 1
   },
-  "button": "f1"
+  "button": "f10"
 }
