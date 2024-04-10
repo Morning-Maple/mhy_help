@@ -2,13 +2,17 @@ import json
 import os
 import time
 from datetime import datetime, timedelta
+from logging import Logger
 
 import cv2
 import pyautogui as pg
 import pygetwindow as gw
 
 import Types
-from utils.utils import ImageOperation, repeat_check
+from config.logger import LoggerLevel
+from utils.utils import ImageOperation, repeat_check, listen_for_double_space
+
+logger: Logger
 
 w_left, w_top, w_width, w_height = 0, 0, 0, 0
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -20,6 +24,19 @@ with open('config/default_config.json', 'r', encoding='utf-8') as f1:
     config_default = json.load(f1)
 with open('config/config.json', 'r', encoding='utf-8') as f2:
     config = json.load(f2)
+
+
+def set_logger(log):
+    """获取唯一的日志对象"""
+    global logger
+    logger = log
+
+
+def compute_resolution():
+    """
+    计算因分辨率而导致鼠标在X轴上的偏差
+    """
+    return config_default["coefficient"]["k"] * w_width + config_default["coefficient"]["b"]
 
 
 def check_window():
@@ -39,15 +56,62 @@ def check_window():
 def auto_do_daily():
     global w_left, w_top, w_width, w_height, region, game_window
 
+    logger.info(">>>> 开始执行")
     check_window()
     time.sleep(0.5)  # 等待窗口激活
-    default_way()
     time.sleep(2)
 
+    pg.press('m')
+    time.sleep(3)
+    # 委托派遣
+    if config["project"]["wt"] == 1:
+        time.sleep(2)
+        res = wt()
+        if not res:
+            logger.warning('执行异常结束')
+            return False
+
+    # 副本挑战
+    if config["project"]["fb"] == 1:
+        res = fb_challenge()
+        if not res:
+            logger.warning('执行异常结束')
+            return False
+
+    # 无名勋礼
+    if config["project"]["xl"] == 1:
+        res = xl()
+        if not res:
+            logger.warning('执行异常结束')
+            return False
+
+    # 杂项
+    if config["project"]["sx_q_email"] == 1:
+        res = get_sx_email_q()
+        if not res:
+            logger.warning('执行异常结束')
+            return False
+
+    logger.info('全部项目已完成！')
+    return True
+
+
+def fb_challenge():
+    """
+    副本挑战
+    Returns:
+        bool: True为挑战成功，否则为False
+    """
     project = config["mode"]
     if project is None:
         project = []
     for item in project:
+        time.sleep(4)
+        res = default_way()
+        if not res:
+            logger.warning('执行异常结束')
+            return False
+
         mode = item["mode"]  # 目标副本
         detail = item["detail"]  # 副本细节
         rounds = item["round"]  # 次数
@@ -94,7 +158,7 @@ def auto_do_daily():
 
         res = check_value()
         if not res:
-            print(config_default['text']['settingError'])
+            logger.error(config_default['text']['settingError'])
             return False
         mode = getattr(getattr(Types, mode.split('.')[1]), mode.split('.')[2])
         detail = getattr(getattr(Types, detail.split('.')[1]), detail.split('.')[2])
@@ -107,7 +171,7 @@ def auto_do_daily():
         time.sleep(3)
         next_rounds = 0
         current_rounds = 0
-        if mode == Types.ModeType.NZHEJ and rounds > 6:
+        if (mode == Types.ModeType.NZHEJ or mode == Types.ModeType.NZHEC) and rounds > 6:
             next_rounds = rounds - 6
             current_rounds = 6
             res = choose_mode_detail(detail, mode, current_rounds)
@@ -118,11 +182,15 @@ def auto_do_daily():
         res = watch_battle()
         if not res:
             return False
+        elif mode == Types.ModeType.QSSD and config['waitCheck'] == 1:
+            logger.info('阻塞，进行查看')
+            listen_for_double_space()
+            logger.info('查看完毕，继续')
 
         # 重复挑战
-        if mode == Types.ModeType.NZHEJ:
+        if mode == Types.ModeType.NZHEJ or mode == Types.ModeType.NZHEC:
             rou = rounds / 6
-            if rounds % 6 != 0:
+            if rounds % 6 != 0 and rou != 0:
                 rou += 1
             for _ in range(rou):
                 if next_rounds > 6:
@@ -137,16 +205,44 @@ def auto_do_daily():
                 res = watch_battle()
                 if not res:
                     return False
+                else:
+                    continue
 
-        for _ in range(rounds - 1):
-            res = battle_again(mode)
-            if not res:
-                return False
-            res = watch_battle()
-            if not res:
-                return False
-        return True
-    print('全部项目已完成！')
+        else:
+            for _ in range(rounds - 1):
+                res = battle_again(mode)
+                if not res:
+                    return False
+                res = watch_battle()
+                if not res:
+                    return False
+                else:
+                    if mode == Types.ModeType.QSSD and config['waitCheck'] == 1:
+                        logger.info('阻塞，进行查看')
+                        listen_for_double_space()
+                        logger.info('查看完毕，继续')
+                    continue
+
+        # 最后要退出副本然后再执行下一步
+        results, loc = repeat_check(
+            image1=cv2.imread('image/button_leave_challenge.png', cv2.IMREAD_GRAYSCALE),
+            regions=region,
+            expand=[],
+            rounds=4,
+        )
+        res = judgment_results(
+            (results, loc),
+            is_show_true_and_none=False,
+            is_show_true_and_have=False,
+            false=config_default['text']['canLeaveChallenge']
+        )
+
+        if not res:
+            logger.warning('无法离开副本')
+            return False
+        continue
+
+    return True
 
 
 def watch_battle(t=6):
@@ -174,13 +270,13 @@ def watch_battle(t=6):
     results, loc = check_double_speed()
     res = judgment_results(
         (results, loc),
-        config_default['text']['doubleSpeedOpening'],
-        config_default['text']['successOpenDoubleSpeed'],
-        config_default['text']['canNotOpenDoubleSpeed'],
+        true_and_none=config_default['text']['doubleSpeedOpening'],
+        true_and_have=config_default['text']['successOpenDoubleSpeed'],
+        false=config_default['text']['canNotOpenDoubleSpeed'],
         expand=check_double_speed()
     )
     if not res:
-        print(config_default['text']['error'])
+        logger.error(config_default['text']['error'])
 
     # 自动战斗检测
     def check_auto_battle():
@@ -198,13 +294,13 @@ def watch_battle(t=6):
     results, loc = check_auto_battle()
     res = judgment_results(
         (results, loc),
-        config_default['text']['autoBattleOpening'],
-        config_default['text']['successOpenAutoBattle'],
-        config_default['text']['canNotOpenAutoBattle'],
+        true_and_none=config_default['text']['autoBattleOpening'],
+        true_and_have=config_default['text']['successOpenAutoBattle'],
+        false=config_default['text']['canNotOpenAutoBattle'],
         expand=check_double_speed()
     )
     if not res:
-        print(config_default['text']['error'])
+        logger.error(config_default['text']['error'])
         return False
 
     # 监视战斗是否结束
@@ -219,7 +315,7 @@ def watch_battle(t=6):
             bool: True为挑战成功，其余为挑战失败
         """
         is_finsh, _ = repeat_check(
-            image2=cv2.imread('image/text_challengeSuccess.png.png', cv2.IMREAD_GRAYSCALE),
+            image2=cv2.imread('image/text_challengeSuccess.png', cv2.IMREAD_GRAYSCALE),
             regions=region,
             expand=[ImageOperation.CANNY],
             rounds=1,
@@ -228,7 +324,7 @@ def watch_battle(t=6):
         if is_finsh:
             return True
         elif datetime.now() - changeTime > timedelta(minutes=times):
-            print(f'{config_default["text"]["timeOutInBattle"]}{times}分钟')
+            logger.error(f'{config_default["text"]["timeOutInBattle"]}{times}分钟')
         else:
             time.sleep(10)
             return check_finish()
@@ -248,7 +344,7 @@ def battle_again(mode_type: Types.ModeType, current_rounds=1, next_rounds=1):
     # 副本为拟造花萼金且下一次挑战次数与上一次挑战次数不同
     if mode_type == Types.NZHEJMode and current_rounds != next_rounds:
         results, loc = repeat_check(
-            image1=cv2.imread('image/button_leaveChallenge.png', cv2.IMREAD_GRAYSCALE),
+            image1=cv2.imread('image/button_leave_challenge.png', cv2.IMREAD_GRAYSCALE),
             regions=region,
             expand=[],
             rounds=4,
@@ -265,13 +361,13 @@ def battle_again(mode_type: Types.ModeType, current_rounds=1, next_rounds=1):
             time.sleep(3)
             ress = challenge_rounds(next_rounds)
             if not ress:
-                print(f'设置{next_rounds}轮次失败！')
+                logger.error(f'设置{next_rounds}轮次失败！')
                 return False
             time.sleep(2)
 
             return challenge(mode_type, next_rounds)
         else:
-            print(config_default['text']['error'])
+            logger.error(config_default['text']['error'])
             return False
 
     else:
@@ -292,7 +388,7 @@ def battle_again(mode_type: Types.ModeType, current_rounds=1, next_rounds=1):
         if res:
             isAllow = no_allow_again(0)
             if isAllow:
-                print(config_default['text']['noPower'])
+                logger.error(config_default['text']['noPower'])
                 return False
             return True
         else:
@@ -351,7 +447,7 @@ def get_sx_email_q():
             if res2:
                 time.sleep(0.5)
                 pg.move(0, -100)
-            elif rounds < 4:
+            elif rounds < 2:
                 rounds += 1
                 continue
             else:
@@ -417,7 +513,7 @@ def get_sx_email_q():
         return judgment_results(
             (results, loc),
             is_show_true_and_none=False,
-            is_show_true_and_have=config_default['text']['successGetEmail'],
+            true_and_have=config_default['text']['successGetEmail'],
             false=config_default['text']['emailGetFail'],
         )
 
@@ -483,7 +579,7 @@ def get_sx_email_q():
         return judgment_results(
             (results, loc),
             is_show_true_and_none=False,
-            is_show_true_and_have=config_default['text']['successGetMoney'],
+            true_and_have=config_default['text']['successGetMoney'],
             false=f"{config_default['text']['canNoFindButton']}领取助战奖励",
         )
 
@@ -512,21 +608,20 @@ def wt():
         image1=cv2.imread('image/button_weituo_have.png', cv2.IMREAD_GRAYSCALE),
         regions=region,
         expand=[],
-        image2=cv2.imread('image/button_weituo_no.png', cv2.IMREAD_GRAYSCALE),
         rounds=4,
         sleep=1,
-        threshold=0.99,
-        is_show_detail=True
+        threshold=0.8,
     )
     res = judgment_results(
         (results, loc),
-        true_and_none=config_default['text']['noWeiTuoCanHandle'],
+        is_show_true_and_none=False,
         is_show_true_and_have=False,
         false=f"{config_default['text']['canNoFindButton']}委托",
     )
     if not res:
         return False
     elif loc is None:
+        pg.press('esc')
         return True
 
     time.sleep(3)
@@ -541,10 +636,14 @@ def wt():
         (results, loc),
         is_show_true_and_none=False,
         is_show_true_and_have=False,
-        false=f"{config_default['text']['canNoFindButton']}一键领取",
+        false=config_default['text']['noWeiTuoCanHandle'],
     )
     if not res:
-        return False
+        time.sleep(2)
+        pg.press('esc')
+        time.sleep(2)
+        pg.press('esc')
+        return True
 
     time.sleep(3)
     results, loc = repeat_check(
@@ -574,6 +673,7 @@ def xl():
     """
     无名勋礼
     """
+    time.sleep(3)
     pg.press('esc')
     time.sleep(3)
 
@@ -595,6 +695,7 @@ def xl():
     if not res:
         return False
     elif loc is None:
+        pg.press('esc')
         return True
 
     results, loc = repeat_check(
@@ -681,15 +782,14 @@ def default_way():
     Returns:
         bool: True如果执行成功，否则返回False
     """
-    pg.press('esc')
-    time.sleep(1)
-    pg.press('f1')
-    time.sleep(1.75)
+    time.sleep(2)
+    pg.press(config['button'])
+    time.sleep(2)
 
     results, loc = repeat_check(
         regions=region,
         expand=[ImageOperation.CANNY],
-        image2=cv2.imread('image/button_shengcunsuoyin.png', cv2.IMREAD_GRAYSCALE),
+        image1=cv2.imread('image/button_shengcunsuoyin.png', cv2.IMREAD_GRAYSCALE),
         rounds=3,
         sleep=1,
     )
@@ -714,19 +814,21 @@ def choose_mode(mode_type: Types.ModeType):
     check_window()
     image = cv2.imread(mode_type.get_path, cv2.IMREAD_GRAYSCALE)
 
+    check_times = 6
+
     def check_mode(check_round=0):
         """
         模式选择
         Returns:
             bool: True为成功，其余为失败
         """
-        if check_round > 6:
+        if check_round > check_times:
             return None
 
         results, loc = repeat_check(
             regions=region,
             expand=[],
-            image2=image,
+            image1=image,
             rounds=4,
             sleep=1,
         )
@@ -751,7 +853,7 @@ def choose_mode(mode_type: Types.ModeType):
     if res_check_mode:
         return True
     else:
-        print(config_default['text']['chooseModeFail'])
+        logger.error(config_default['text']['chooseModeFail'])
         return False
 
 
@@ -773,6 +875,10 @@ def choose_mode_detail(
 
     check_window()
 
+    check_times = 8
+    if cs_str == Types.ModeType.NZHEC or cs_str == Types.ModeType.NZXY or cs_str == Types.ModeType.QSSD:
+        check_times = 16
+
     # 副本传送实现（普通）
     def check_challenge_common(check_round=0):
         """
@@ -780,7 +886,7 @@ def choose_mode_detail(
         Returns:
             bool: True为成功，其余为失败
         """
-        if check_round > 8:
+        if check_round > check_times:
             return None
 
         results, loc = repeat_check(
@@ -794,10 +900,10 @@ def choose_mode_detail(
             return loc
         else:
             check_window()
-            pg.moveTo(w_left + config_default['rightSide']['x'], w_top + config_default['rightSide']['y'], duration=0.5)
-            for _ in range(4):
+            pg.moveTo(w_left + config_default['rightSide']['x'], w_top + config_default['rightSide']['y'])
+            for _ in range(10):
                 pg.scroll(-600)
-            time.sleep(1)
+            time.sleep(2)
             return check_challenge_common(check_round + 1)
 
     def check_challenge_special(check_round=0):
@@ -806,7 +912,7 @@ def choose_mode_detail(
         Returns:
             bool: True为成功，其余为失败
         """
-        if check_round > 8:
+        if check_round > 4:
             return None
 
         results, loc = repeat_check(
@@ -828,10 +934,6 @@ def choose_mode_detail(
             return check_challenge_common(0)
         else:
             check_window()
-            pg.moveTo(w_left + config_default['rightSide']['x'], w_top + config_default['rightSide']['y'], duration=0.5)
-            for _ in range(4):
-                pg.scroll(-600)
-            time.sleep(1)
             return check_challenge_special(check_round + 1)
 
     if detail_type == Types.NZHEJMode:
@@ -842,9 +944,9 @@ def choose_mode_detail(
     if location:
         x, y = location
         pg.click(w_left + x + config_default[cs_str.name]['x'], w_top + y + config_default[cs_str.name]['y'])
-        time.sleep(5)
+        time.sleep(8)
     else:
-        print(config_default['text']['canNoTeleport'])
+        logger.error(config_default['text']['canNoTeleport'])
         return False
 
     ################
@@ -861,10 +963,10 @@ def challenge_rounds(rounds: int = 1):
         bools: True为设置成功，否则为False
     """
     if not rounds >= 1 and rounds <= 6:
-        print(f"{config_default['text']['noAllowNumber']}{rounds}")
+        logger.error(f"{config_default['text']['noAllowNumber']}{rounds}")
         return False
 
-    def getCurrentRounds(check_round=2):
+    def getCurrentRounds(check_round=4):
         """
         获取当前挑战轮数
         Args:
@@ -877,7 +979,7 @@ def challenge_rounds(rounds: int = 1):
                 image2=cv2.imread(path, cv2.IMREAD_GRAYSCALE),
                 regions=region,
                 expand=[],
-                threshold=0.999,
+                threshold=0.99,
                 rounds=check_round,
             )
             res1 = judgment_results(
@@ -891,7 +993,7 @@ def challenge_rounds(rounds: int = 1):
 
     ids = getCurrentRounds(2)
     if ids is None:
-        print(config_default['text']['canCheckHowRound'])
+        logger.error(config_default['text']['canCheckHowRound'])
         return False
 
     def handleAddOrReduce(path):
@@ -920,7 +1022,7 @@ def challenge_rounds(rounds: int = 1):
                 time.sleep(0.2)
                 pg.click(w_left + x, w_top + y)
         else:
-            print(f"{config_default['text']['canNoAddOrReduceRounds']}目标期望{rounds}，但实际为{ids}")
+            logger.error(f"{config_default['text']['canNoAddOrReduceRounds']}目标期望{rounds}，但实际为{ids}")
             return False
     elif ids < rounds:
         res, loc = handleAddOrReduce('image/button_light_add.png')
@@ -933,7 +1035,7 @@ def challenge_rounds(rounds: int = 1):
                 time.sleep(0.2)
                 pg.click(w_left + x, w_top + y)
         else:
-            print(f"{config_default['text']['canNoAddOrReduceRounds']}目标期望{rounds}，但实际为{ids}")
+            logger.error(f"{config_default['text']['canNoAddOrReduceRounds']}目标期望{rounds}，但实际为{ids}")
             return False
     return True
 
@@ -967,7 +1069,7 @@ def challenge(cs_str: Types.ModeType, rounds=1):
         if cs_str == Types.ModeType.NZHEC or cs_str == Types.ModeType.NZHEJ:
             res_set = challenge_rounds(rounds)
             if not res_set:
-                print(f'没有成功设置{rounds}次挑战次数')
+                logger.error(f'没有成功设置{rounds}次挑战次数')
 
         return judgment_results(
             (results, loc),
@@ -1036,17 +1138,20 @@ def no_allow_again(check_round=4):
         (results, loc),
         true_and_none=config_default['text']['noPower'],
         is_show_true_and_have=False,
-        false=f"{config_default['text']['canFindText']}体力不足",
+        is_show_false=False,
     )
 
 
 def judgment_results(
         results,
         is_show_true_and_none=True,
+        true_and_none_logger_level=LoggerLevel.INFO,
         true_and_none='默认值返回：识别成功且无坐标返回',
         is_show_true_and_have=True,
+        true_and_have_logger_level=LoggerLevel.INFO,
         true_and_have='默认值返回：识别成功且有坐标返回',
         is_show_false=True,
+        false_logger_level=LoggerLevel.INFO,
         false='默认值返回：识别失败',
         expand=None
 ):
@@ -1055,34 +1160,50 @@ def judgment_results(
     Args:
         results (tuple): 一个包含(bool, tuple | None)的元组
         is_show_true_and_none: 是否展示true_and_none返回内容
+        true_and_none_logger_level: 日志输出级别
         true_and_none: 成功且无坐标返回的文本内容
         is_show_true_and_have: 是否展示true_and_have返回内容
+        true_and_have_logger_level: 日志输出级别
         true_and_have: 成功且有坐标返回的文本内容
         is_show_false: 是否展示false返回内容
+        false_logger_level: 日志输出级别
         false: 失败返回的文本内容
         expand: 再次检测的方法（例如开启自动战斗后，可再次检测是否已经开启自动战斗）
     Returns:
         bool: True为执行顺利，否则返回False
     """
 
+    def log_print(val: LoggerLevel, desc: str):
+        match val:
+            case LoggerLevel.DEBUG:
+                logger.debug(desc)
+            case LoggerLevel.INFO:
+                logger.info(desc)
+            case LoggerLevel.WARNING:
+                logger.warning(desc)
+            case LoggerLevel.ERROR:
+                logger.error(desc)
+            case LoggerLevel.CRITICAL:
+                logger.critical(desc)
+
     def check(val):
         res, loc = val
         if res and loc is None:
             if is_show_true_and_none:
-                print(true_and_none)
+                log_print(true_and_none_logger_level, true_and_none)
             return True
         elif res and loc is not None:
             x, y = loc
             pg.click(w_left + x, w_top + y)
             time.sleep(0.5)
             if is_show_true_and_have:
-                print(true_and_have)
+                log_print(true_and_have_logger_level, true_and_have)
             if expand is not None:
                 return check(expand)
             return True
         elif not res:
             if is_show_false:
-                print(false)
+                log_print(false_logger_level, false)
             return False
 
     return check(results)
