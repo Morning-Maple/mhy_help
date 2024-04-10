@@ -1,11 +1,20 @@
 import sys
 
-import daily as d
+from PyQt6.QtWidgets import QApplication
+
+from HSR_Help.auto_daily.config.logger import setup_logging
+from HSR_Help.auto_daily.ui import MainWindow
+
+
+def main():
+    logger = setup_logging()  # 日志初始化
+
+    app = QApplication([])
+    window = MainWindow(logger)
+    window.show()
+
+    sys.exit(app.exec())
+
 
 if __name__ == "__main__":
-    # root = tk.Tk()
-    # app = ui.App(root)
-    # root.mainloop()
-    d.auto_do_daily()
-    print('完成！')
-    sys.exit()
+    main()
