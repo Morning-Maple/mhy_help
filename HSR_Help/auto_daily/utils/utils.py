@@ -1,7 +1,9 @@
+import threading
 import time
 from enum import Enum
 
 import cv2
+import keyboard
 import numpy as np
 import pyautogui as pg
 
@@ -132,3 +134,43 @@ def repeat_check(
             continue
 
     return b, loc
+
+
+def listen_for_double_space(timeout=300, interval=2):
+    """
+    监听双空格键事件，如果在2秒内按下两次空格键或超过五分钟后返回True
+    Args:
+        timeout (int): 超时时间（秒）
+        interval (int)： 规定时间内按下两次空格
+    Returns:
+        bool: 无论如何都返回True
+    """
+
+    start_time = time.time()
+    space_count = 0
+
+    def reset_space_count():
+        nonlocal space_count
+        space_count = 0
+
+    def on_space(event):
+        nonlocal space_count
+        space_count += 1
+        if space_count == 1:
+            # 重置计数器的定时器
+            threading.Timer(interval, reset_space_count).start()
+        elif space_count == 2:
+            # 按下两次空格键
+            keyboard.unhook_all()
+            return True
+
+    keyboard.on_press_key("space", on_space)
+
+    while time.time() - start_time < timeout:
+        if space_count == 2:
+            return True
+        time.sleep(0.1)
+
+    # 超时
+    keyboard.unhook_all()
+    return True
