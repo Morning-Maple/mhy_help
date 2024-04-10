@@ -1,18 +1,24 @@
 import json
-import sys
+import threading
+import time
 from datetime import datetime
 
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, \
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, \
     QComboBox, QLabel, QGridLayout, QCheckBox, QSpinBox, QScrollArea
 
 import Types
-from config.logger import setup_logging
+import daily as d
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    log_updated = pyqtSignal(str)  # 更新日志的信号
+    finish_bat = pyqtSignal()  # 脚本执行完毕的信号
+
+    def __init__(self, log):
         super().__init__()
+        self.logger = log
+        self.is_running = True  # 添加一个标志来控制线程的运行
 
         # 文件读取
         with open('config/default_config.json', 'r', encoding='utf-8') as f1:
@@ -184,7 +190,7 @@ class MainWindow(QMainWindow):
         # 沿用配置文件中的内容
         for mode_data in config["mode"]:
             add_challenge_row(mode_data)
-        logger.info(">>>> 读取上一次配置成功")
+        self.logger.info(">>>> 读取上一次配置成功")
 
         # 移除所有行
         def remove_all_row():
@@ -253,16 +259,27 @@ class MainWindow(QMainWindow):
                 json.dump(config, f, indent=4)
                 f.flush()
 
-            logger.info('成功保存设置')
+            self.logger.info('成功保存设置')
 
         save_config_button.clicked.connect(save_config)
 
+        def run_auto_do_daily():
+            d.set_logger(self.logger)
+            self.logger.info(">>>> 开始执行脚本")
+            d.auto_do_daily()
+            self.finish_bat.emit()
+
         # 开始执行
         def start_execution():
-            # 在这里添加开始执行的逻辑
-            pass
+            save_config_button.setEnabled(False)
+            finish_bat_thread = threading.Thread(target=run_auto_do_daily)
+            finish_bat_thread.start()
+
+        def on_daily_finished():
+            save_config_button.setEnabled(True)
 
         start_execution_button.clicked.connect(start_execution)
+        self.finish_bat.connect(on_daily_finished)
 
         left_widget.setLayout(left_layout)
 
@@ -271,28 +288,38 @@ class MainWindow(QMainWindow):
         right_widget.setReadOnly(True)  # 设置为只读，使其仅用于显示日志
 
         current_date = datetime.now().strftime('%Y%m%d')
-        log_filename = f'logs/log_{current_date}.log'
+        self.log_filename = f'logs/log_{current_date}.log'
         try:
-            with open(log_filename, 'r', encoding='utf-8') as log_file:
+            with open(self.log_filename, 'r', encoding='utf-8') as log_file:
                 log_data = log_file.read()
                 last_session_logs = log_data.split("--------")[-1]
                 right_widget.setText(last_session_logs)
         except FileNotFoundError:
             right_widget.setText("今日暂无最新的日志文件")
 
-        def update_log_content():
-            """更新日志内容显示"""
-            try:
-                with open(log_filename, 'r', encoding='utf-8') as log_file1:
-                    log_data_1 = log_file1.read()
-                    last_session_logs_1 = log_data_1.split("--------")[-1]
-                    right_widget.setText(last_session_logs_1)
-            except FileNotFoundError:
-                right_widget.setText("今天的日志文件不存在。")
+        def setup_log_update_thread():
+            """设置日志更新线程"""
+            log_update_thread = threading.Thread(target=update_log_content)
+            log_update_thread.start()
 
-        self.timer = QTimer()
-        self.timer.timeout.connect(update_log_content)
-        self.timer.start(200)  # 每0.2秒更新一次
+        def update_log_content():
+            """更新日志内容显示的线程函数"""
+            while self.is_running:
+                try:
+                    with open(self.log_filename, 'r', encoding='utf-8') as log_file1:
+                        log_data1 = log_file1.read()
+                        last_session_logs1 = log_data1.split("--------")[-1]
+                        self.log_updated.emit(last_session_logs1)  # 使用信号在主线程中更新日志
+                except FileNotFoundError:
+                    self.log_updated.emit("今天的日志文件不存在。")
+                time.sleep(0.2)  # 每0.2秒更新一次
+
+        setup_log_update_thread()
+
+        def update_log(log_content):
+            right_widget.setText(log_content)
+
+        self.log_updated.connect(update_log)
 
         # --主布局中
         main_layout.addWidget(left_widget, 1)
@@ -305,14 +332,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("运行面板")
         self.resize(800, 600)
 
-
-if __name__ == "__main__":
-    # 创建应用程序实例和主窗口
-    logger = setup_logging()  # 日志初始化
-
-    app = QApplication([])
-    window = MainWindow()
-    window.show()
-
-    # 运行应用程序
-    sys.exit(app.exec())
+    def closeEvent(self, event):
+        """重写窗口关闭事件处理函数"""
+        self.is_running = False  # 当窗口关闭时，设置 is_running 为 False 以停止线程
+        super().closeEvent(event)
