@@ -329,8 +329,8 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(main_layout)
 
         # 设置窗口标题和初始大小
-        self.setWindowTitle("运行面板")
-        self.resize(800, 600)
+        self.setWindowTitle("控制面板")
+        self.resize(900, 600)
 
     def closeEvent(self, event):
         """重写窗口关闭事件处理函数"""
