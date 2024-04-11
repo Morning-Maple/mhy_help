@@ -1,12 +1,13 @@
 import json
-import os
 import time
 from datetime import datetime, timedelta
 from logging import Logger
+from typing import Any
 
 import cv2
 import pyautogui as pg
 import pygetwindow as gw
+from pygetwindow import Win32Window
 
 import Types
 from config.logger import LoggerLevel
@@ -15,15 +16,23 @@ from utils.utils import ImageOperation, repeat_check, listen_for_double_space
 logger: Logger
 
 w_left, w_top, w_width, w_height = 0, 0, 0, 0
-current_dir = os.path.dirname(os.path.abspath(__file__))
 region = (0, 0, 0, 0)
 # 获取游戏窗口
-game_window = gw.getWindowsWithTitle('崩坏：星穹铁道')[0]
+game_window = list[Win32Window]
 
-with open('config/default_config.json', 'r', encoding='utf-8') as f1:
-    config_default = json.load(f1)
-with open('config/config.json', 'r', encoding='utf-8') as f2:
-    config = json.load(f2)
+config_default: Any
+config: Any
+
+
+def get_config():
+    """
+    读取配置文件
+    """
+    global config_default, config
+    with open('config/default_config.json', 'r', encoding='utf-8') as f1:
+        config_default = json.load(f1)
+    with open('config/config.json', 'r', encoding='utf-8') as f2:
+        config = json.load(f2)
 
 
 def set_logger(log):
@@ -44,6 +53,8 @@ def check_window():
     初始化部分变量数据
     """
     global w_left, w_top, w_width, w_height, region, game_window
+    game_window = gw.getWindowsWithTitle('崩坏：星穹铁道')[0]
+
     if not game_window.isActive:
         # 防止最小化，同时激活窗口
         game_window.restore()
@@ -57,6 +68,7 @@ def auto_do_daily():
     global w_left, w_top, w_width, w_height, region, game_window
 
     logger.info(">>>> 开始执行")
+    get_config()
     check_window()
     time.sleep(0.5)  # 等待窗口激活
     time.sleep(2)
@@ -68,31 +80,32 @@ def auto_do_daily():
         time.sleep(2)
         res = wt()
         if not res:
-            logger.warning('执行异常结束')
+            logger.warning('委托执行异常结束')
             return False
 
     # 副本挑战
     if config["project"]["fb"] == 1:
         res = fb_challenge()
         if not res:
-            logger.warning('执行异常结束')
+            logger.warning('副本挑战执行异常结束')
             return False
 
     # 无名勋礼
     if config["project"]["xl"] == 1:
         res = xl()
         if not res:
-            logger.warning('执行异常结束')
+            logger.warning('无名勋礼执行异常结束')
             return False
 
     # 杂项
     if config["project"]["sx_q_email"] == 1:
         res = get_sx_email_q()
         if not res:
-            logger.warning('执行异常结束')
+            logger.warning('实训、助战奖励、邮件领取执行异常结束')
             return False
 
     logger.info('全部项目已完成！')
+    logger.info('======== 分割线 ========')
     return True
 
 
@@ -401,6 +414,7 @@ def get_sx_email_q():
     Returns:
         tool: True成功，否则返回False
     """
+    time.sleep(3)
     pg.press('esc')
     time.sleep(3)
 
@@ -410,8 +424,25 @@ def get_sx_email_q():
         领取实训奖励
         """
         results, loc = repeat_check(
-            image1=cv2.imread('image/button_zhinan_have.png', cv2.IMREAD_GRAYSCALE),
-            image2=cv2.imread('image/button_zhinan_none.png', cv2.IMREAD_GRAYSCALE),
+            image1=cv2.imread('image/button_zhinan.png', cv2.IMREAD_GRAYSCALE),
+            regions=region,
+            expand=[ImageOperation.CANNY],
+            rounds=4,
+            sleep=1,
+            threshold=0.85,
+        )
+        res1 = judgment_results(
+            (results, loc),
+            is_show_true_and_none=False,
+            is_show_true_and_have=False,
+            false=f"{config_default['text']['canNoFindButton']}{'指南'}",
+        )
+        if not res1:
+            return False, None
+
+        time.sleep(3)
+        results, loc = repeat_check(
+            image1=cv2.imread('image/button_meirishixun.png', cv2.IMREAD_GRAYSCALE),
             regions=region,
             expand=[ImageOperation.CANNY],
             rounds=4,
@@ -419,17 +450,17 @@ def get_sx_email_q():
         )
         res1 = judgment_results(
             (results, loc),
-            true_and_none=config_default['text']['noShiXunCanGet'],
+            is_show_true_and_none=False,
             is_show_true_and_have=False,
-            false=f"{config_default['text']['canNoFindButton']}{'指南'}",
+            false=f"{config_default['text']['canNoFindButton']}{'每日实训'}",
         )
         if not res1:
-            return False
-        elif loc is None:
-            return True
+            return False, None
 
         rounds = 0
         while True:
+            if rounds < 2:
+                break
             time.sleep(3)
             results, loc = repeat_check(
                 image1=cv2.imread('image/button_get.png', cv2.IMREAD_GRAYSCALE),
@@ -437,6 +468,7 @@ def get_sx_email_q():
                 expand=[],
                 rounds=2,
                 sleep=1,
+                threshold=0.8
             )
             res2 = judgment_results(
                 (results, loc),
@@ -447,33 +479,38 @@ def get_sx_email_q():
             if res2:
                 time.sleep(0.5)
                 pg.move(0, -100)
-            elif rounds < 2:
+            else:
                 rounds += 1
                 continue
-            else:
-                break
 
         time.sleep(3)
         results, loc = repeat_check(
             image1=cv2.imread('image/button_shixun.png', cv2.IMREAD_GRAYSCALE),
             regions=region,
+            image2=cv2.imread('image/text_sx_benrihuoyueduyiman.png', cv2.IMREAD_GRAYSCALE),
             expand=[],
             rounds=4,
             sleep=1,
         )
-        return judgment_results(
+        re1 = judgment_results(
             (results, loc),
-            is_show_true_and_none=False,
+            true_and_none=config_default['text']['shiXunIsFull'],
             true_and_have=config_default['text']['successGetShiXun'],
-            false=f"{config_default['text']['canNoFindButton']}{'领取实训'}",
+            false=config_default['text']['extraShiXunTip'],
         )
+        # 如果没有坐标，说明没有领取奖励，也就说只需要一次ESC
+        if loc is None:
+            return re1, True
+        else:
+            return re1, False
 
-    res_sx = get_sx()
-    if not res_sx:
+    res_sx1, res_sx2 = get_sx()
+    if not res_sx1:
         return False
     else:
         time.sleep(1)
         pg.press('esc')
+    if not res_sx2:
         time.sleep(3)
         pg.press('esc')
 
@@ -484,23 +521,21 @@ def get_sx_email_q():
         邮件领取
         """
         results, loc = repeat_check(
-            image1=cv2.imread('image/button_email_have.png', cv2.IMREAD_GRAYSCALE),
-            image2=cv2.imread('image/button_email_none.png', cv2.IMREAD_GRAYSCALE),
+            image1=cv2.imread('image/button_email.png', cv2.IMREAD_GRAYSCALE),
             regions=region,
             expand=[ImageOperation.CANNY],
             rounds=4,
             sleep=1,
+            threshold=0.8
         )
         res1 = judgment_results(
             (results, loc),
-            true_and_none=config_default['text']['noEmailCanGet'],
+            is_show_true_and_none=False,
             is_show_true_and_have=False,
             false=f"{config_default['text']['canNoFindButton']}{'邮件'}",
         )
         if not res1:
-            return False
-        elif loc is None:
-            return True
+            return False, None
 
         time.sleep(3)
         results, loc = repeat_check(
@@ -510,19 +545,22 @@ def get_sx_email_q():
             rounds=4,
             sleep=1,
         )
-        return judgment_results(
+        res = judgment_results(
             (results, loc),
             is_show_true_and_none=False,
             true_and_have=config_default['text']['successGetEmail'],
-            false=config_default['text']['emailGetFail'],
+            false=config_default['text']['noEmailCanGet'],
         )
+        return True, res
 
-    res_email = get_email()
-    if not res_email:
+    res_email1, res_email2 = get_email()
+    if not res_email1:
         return False
     else:
         time.sleep(1)
         pg.press('esc')
+    # 没有邮件需要领取的时候，只需一次ESC
+    if res_email2:
         time.sleep(1)
         pg.press('esc')
 
@@ -533,8 +571,7 @@ def get_sx_email_q():
         领取助战奖励
         """
         results, loc = repeat_check(
-            image1=cv2.imread('image/button_q_have.png', cv2.IMREAD_GRAYSCALE),
-            image2=cv2.imread('image/button_q_none.png', cv2.IMREAD_GRAYSCALE),
+            image1=cv2.imread('image/button_q.png', cv2.IMREAD_GRAYSCALE),
             regions=region,
             expand=[ImageOperation.CANNY],
             rounds=4,
@@ -542,7 +579,7 @@ def get_sx_email_q():
         )
         res1 = judgment_results(
             (results, loc),
-            true_and_none=config_default['text']['noMoneyGet'],
+            is_show_true_and_none=False,
             is_show_true_and_have=False,
             false=f"{config_default['text']['canNoFindButton']}省略号",
         )
@@ -576,12 +613,13 @@ def get_sx_email_q():
             rounds=4,
             sleep=1,
         )
-        return judgment_results(
+        judgment_results(
             (results, loc),
             is_show_true_and_none=False,
             true_and_have=config_default['text']['successGetMoney'],
-            false=f"{config_default['text']['canNoFindButton']}领取助战奖励",
+            false=config_default['text']['noMoneyGet'],
         )
+        return True
 
     res_q = get_q()
     if not res_q:
@@ -605,7 +643,7 @@ def wt():
     time.sleep(3)
 
     results, loc = repeat_check(
-        image1=cv2.imread('image/button_weituo_have.png', cv2.IMREAD_GRAYSCALE),
+        image1=cv2.imread('image/button_weituo.png', cv2.IMREAD_GRAYSCALE),
         regions=region,
         expand=[],
         rounds=4,
@@ -678,25 +716,21 @@ def xl():
     time.sleep(3)
 
     results, loc = repeat_check(
-        image1=cv2.imread('image/button_xl_have.png', cv2.IMREAD_GRAYSCALE),
+        image1=cv2.imread('image/button_xl.png', cv2.IMREAD_GRAYSCALE),
         regions=region,
         expand=[],
-        image2=cv2.imread('image/button_xl_none.png', cv2.IMREAD_GRAYSCALE),
         rounds=4,
         sleep=1,
-        threshold=0.99,
+        threshold=0.8,
     )
     res = judgment_results(
         (results, loc),
-        true_and_none=config_default['text']['noXunLiGet'],
+        is_show_true_and_none=False,
         is_show_true_and_have=False,
         false=f"{config_default['text']['canNoFindButton']}无名勋礼",
     )
     if not res:
         return False
-    elif loc is None:
-        pg.press('esc')
-        return True
 
     results, loc = repeat_check(
         image1=cv2.imread('image/button_xl_rw_have.png', cv2.IMREAD_GRAYSCALE),
@@ -716,6 +750,7 @@ def xl():
     if not res:
         return False
     elif loc is not None:
+        time.sleep(3)
         # 无名勋礼的任务需要领取，领取完毕跳回奖励页面
         results1, loc1 = repeat_check(
             image1=cv2.imread('image/button_one_click_get_1.png', cv2.IMREAD_GRAYSCALE),
@@ -723,6 +758,7 @@ def xl():
             expand=[],
             rounds=4,
             sleep=1,
+            threshold=0.7
         )
         # 不考虑结果，因为有可能本期任务存在红点而导致任务有红点，但是此时是没有“一键领取”标识的
         judgment_results(
@@ -751,6 +787,10 @@ def xl():
         if not res1:
             return False
         elif loc1 is None:
+            time.sleep(2)
+            pg.press('esc')
+            time.sleep(2)
+            pg.press('esc')
             return True
 
     # 奖励判断领取逻辑
@@ -769,6 +809,8 @@ def xl():
     )
     if not res:
         return False
+    time.sleep(2)
+    pg.press('esc')
     time.sleep(2)
     pg.press('esc')
     time.sleep(2)
