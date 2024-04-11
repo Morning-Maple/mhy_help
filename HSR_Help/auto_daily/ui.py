@@ -211,8 +211,8 @@ class MainWindow(QMainWindow):
 
         # 底部按钮
         bottom_buttons_layout = QHBoxLayout()
-        save_config_button = QPushButton("保存配置")
         start_execution_button = QPushButton("开始执行")
+        save_config_button = QPushButton("保存配置")
         bottom_buttons_layout.addWidget(save_config_button)
         bottom_buttons_layout.addWidget(start_execution_button)
         left_layout.addLayout(bottom_buttons_layout, 6, 0)  # 将底部按钮布局添加到左侧布局中
@@ -271,6 +271,7 @@ class MainWindow(QMainWindow):
 
         # 开始执行
         def start_execution():
+            save_config()
             save_config_button.setEnabled(False)
             finish_bat_thread = threading.Thread(target=run_auto_do_daily)
             finish_bat_thread.start()
