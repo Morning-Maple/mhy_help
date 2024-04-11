@@ -70,6 +70,8 @@
     "noXunLiGet": "不需要领取无名勋礼",
     "noXunLiRenWuGet": "无勋礼任务需要被领取",
     "noXunLiJiangLiGet": "无勋礼奖励需要被领取",
-    "successGetXunLiJiangLi": "无名勋礼奖励领取成功"
+    "successGetXunLiJiangLi": "无名勋礼奖励领取成功",
+    "shiXunIsFull": "本日活跃度已满",
+    "extraShiXunTip": "无可领取的实训奖励，但是本日活跃度未满"
   }
 }
