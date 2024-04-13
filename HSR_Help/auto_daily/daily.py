@@ -202,8 +202,12 @@ def fb_challenge():
 
         # 重复挑战
         if mode == Types.ModeType.NZHEJ or mode == Types.ModeType.NZHEC:
-            rou = rounds / 6
-            if rounds % 6 != 0 and rou != 0:
+            rou = next_rounds // 6
+            if rounds <= 6:
+                # 挑战次数小于等于6，也就是只打一轮，不用再重复挑战
+                continue
+
+            if next_rounds % 6 != 0:
                 rou += 1
             for _ in range(rou):
                 if next_rounds > 6:
@@ -212,6 +216,7 @@ def fb_challenge():
                         return False
                     next_rounds -= 6
                 else:
+                    # 挑战次数不满六次退出关卡重新选次数
                     res = battle_again(mode, current_rounds, next_rounds)
                     if not res:
                         return False
@@ -1169,6 +1174,7 @@ def no_allow_again(check_round=4):
     Returns:
         bool: True为体力不足，否则为False
     """
+    time.sleep(3)
     results, loc = repeat_check(
         regions=region,
         expand=[],
@@ -1228,19 +1234,25 @@ def judgment_results(
             case LoggerLevel.CRITICAL:
                 logger.critical(desc)
 
+    is_first = True  # 防止expand有值的时候导致无限迭代
+
     def check(val):
+        nonlocal is_first
         res, loc = val
         if res and loc is None:
             if is_show_true_and_none:
                 log_print(true_and_none_logger_level, true_and_none)
             return True
         elif res and loc is not None:
+            if not is_first:
+                return True
             x, y = loc
             pg.click(w_left + x, w_top + y)
             time.sleep(0.5)
             if is_show_true_and_have:
                 log_print(true_and_have_logger_level, true_and_have)
-            if expand is not None:
+            if expand is not None and is_first:
+                is_first = False
                 return check(expand)
             return True
         elif not res:
