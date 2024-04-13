@@ -205,7 +205,7 @@ def fb_challenge():
             rou = next_rounds // 6
             if rounds <= 6:
                 # 挑战次数小于等于6，也就是只打一轮，不用再重复挑战
-                continue
+                rou = 0
 
             if next_rounds % 6 != 0:
                 rou += 1
@@ -360,7 +360,7 @@ def battle_again(mode_type: Types.ModeType, current_rounds=1, next_rounds=1):
     """
     time.sleep(3)
     # 副本为拟造花萼金且下一次挑战次数与上一次挑战次数不同
-    if mode_type == Types.NZHEJMode and current_rounds != next_rounds:
+    if (mode_type == Types.NZHEJMode or mode_type == Types.NZHECMode) and current_rounds != next_rounds:
         results, loc = repeat_check(
             image1=cv2.imread('image/button_leave_challenge.png', cv2.IMREAD_GRAYSCALE),
             regions=region,
