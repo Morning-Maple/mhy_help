@@ -878,6 +878,7 @@ def choose_mode(mode_type: Types.ModeType):
             image1=image,
             rounds=4,
             sleep=1,
+            threshold=0.85
         )
 
         res = judgment_results(
