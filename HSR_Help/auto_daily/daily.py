@@ -67,7 +67,7 @@ def check_window():
 def auto_do_daily():
     global w_left, w_top, w_width, w_height, region, game_window
 
-    logger.info(">>>> 开始执行")
+    logger.info(">>>> 开始")
     get_config()
     check_window()
     time.sleep(0.5)  # 等待窗口激活
@@ -344,7 +344,8 @@ def battle_again():
         false=config_default['text']['canNoAgainChallenge']
     )
     if res:
-        isAllow = no_allow_again(0)
+        time.sleep(3)
+        isAllow = no_allow_again(2)
         if isAllow:
             logger.error(config_default['text']['noPower'])
             return False
@@ -404,7 +405,7 @@ def get_sx_email_q():
 
         rounds = 0
         while True:
-            if rounds < 2:
+            if rounds > 2:
                 break
             time.sleep(3)
             results, loc = repeat_check(
@@ -521,6 +522,7 @@ def get_sx_email_q():
             expand=[ImageOperation.CANNY],
             rounds=4,
             sleep=1,
+            threshold=0.71,
         )
         res1 = judgment_results(
             (results, loc),
@@ -748,18 +750,17 @@ def xl():
     )
     res = judgment_results(
         (results, loc),
-        true_and_none=config_default['text']['noXunLiJiangLiGet'],
+        is_show_true_and_none=False,
         true_and_have=config_default['text']['successGetXunLiJiangLi'],
-        false=f"{config_default['text']['canNoFindButton']}无名勋礼——奖励——一键领取",
+        false=config_default['text']['noXunLiJiangLiGet'],
     )
-    if not res:
-        return False
     time.sleep(2)
     pg.press('esc')
     time.sleep(2)
     pg.press('esc')
-    time.sleep(2)
-    pg.press('esc')
+    if res:
+        time.sleep(2)
+        pg.press('esc')
     return True
 
 
@@ -942,7 +943,7 @@ def challenge():
         return False
     else:
         time.sleep(3)
-        res_power = no_allow_again(0)
+        res_power = no_allow_again(2)
         if res_power:
             return False
 
