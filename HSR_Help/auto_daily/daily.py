@@ -51,9 +51,16 @@ def compute_resolution():
 def check_window():
     """
     初始化部分变量数据
+    Returns:
+        bool: 如果成功获取窗体并设置相关参数，返回True，否则找不到窗体返回False
     """
     global w_left, w_top, w_width, w_height, region, game_window
-    game_window = gw.getWindowsWithTitle('崩坏：星穹铁道')[0]
+    game_window = gw.getWindowsWithTitle('崩坏：星穹铁道')
+
+    if game_window:
+        game_window = game_window[0]
+    else:
+        return False
 
     if not game_window.isActive:
         # 防止最小化，同时激活窗口
@@ -62,6 +69,7 @@ def check_window():
         # 获取窗口的位置信息
         w_left, w_top, w_width, w_height = game_window.left, game_window.top, game_window.width, game_window.height
         region = (w_left, w_top, w_width, w_height)
+    return True
 
 
 def auto_do_daily():
@@ -69,7 +77,10 @@ def auto_do_daily():
 
     logger.info(">>>> 开始")
     get_config()
-    check_window()
+    c_res = check_window()
+    if not c_res:
+        logger.error('未能识别到游戏窗口！执行失败')
+        return False
     time.sleep(0.5)  # 等待窗口激活
     time.sleep(2)
 
