@@ -34,7 +34,4 @@ def setup_logging():
     console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     logging.getLogger().addHandler(console_handler)
 
-    logging.getLogger().info('\n--------')
-    logging.getLogger().info("NOOB PROJECT BY MORNING_MAPLE :|")
-    logging.getLogger().info('>>>> 初始化完毕')
     return logging.getLogger()

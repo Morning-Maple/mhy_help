@@ -1,5 +1,6 @@
 import json
 import multiprocessing
+import os
 import threading
 import time
 from datetime import datetime
@@ -15,16 +16,12 @@ import config.logger as lo
 bat_process: multiprocessing
 is_second_threading = True  # 日志读取线程是否开启
 is_execution_threading = False  # 获取脚本执行情况线程是否开启
-is_finish_execution = True  # 脚本是否执行完成
 
 
-def execution(logs):
+def execution():
     """真正执行脚本的进程"""
-    global is_finish_execution, bat_process
     d.set_logger(lo.setup_logging())
     d.auto_do_daily()
-    is_finish_execution = True
-    bat_process = None
 
 
 class MainWindow(QMainWindow):
@@ -35,6 +32,8 @@ class MainWindow(QMainWindow):
 
         super().__init__()
         self.logger = log
+
+        self.last_time = None
 
         # 文件读取
         with open('config/default_config.json', 'r', encoding='utf-8') as f1:
@@ -308,19 +307,18 @@ class MainWindow(QMainWindow):
 
     def start_execution(self):
         """开始执行脚本"""
-        global bat_process, is_execution_threading, is_finish_execution
+        global bat_process, is_execution_threading
 
         self.save_config()
-        self.logger.info(">>>> 开始执行脚本")
+        self.logger.info("================")
         self.save_config_button.setEnabled(False)
         self.start_execution_button.setEnabled(False)
         self.stop_execution_button.setEnabled(True)
 
         # 重置状态(顺序别换，不然容易导致第二线程重置is_execution_threading的值)
-        is_finish_execution = False
         is_execution_threading = True
 
-        bat_process = multiprocessing.Process(target=execution, args=(self.logger,))
+        bat_process = multiprocessing.Process(target=execution)
         bat_process.start()
 
     def on_execution_finished(self):
@@ -341,6 +339,7 @@ class MainWindow(QMainWindow):
 
         current_date = datetime.now().strftime('%Y%m%d')
         self.log_filename = f'logs/log_{current_date}.log'
+        self.last_time = os.path.getmtime(self.log_filename)
         try:
             with open(self.log_filename, 'r', encoding='utf-8') as log_file:
                 log_data = log_file.read()
@@ -353,11 +352,15 @@ class MainWindow(QMainWindow):
             """
             更新最新的内容展示到右侧日志显示栏中，如果出现了滚动条且不在底部，滚动到底部
             """
+            current_location = right_widget.verticalScrollBar().value()
+            max_location = right_widget.verticalScrollBar().maximum()
             right_widget.setText(log_content)
-            scroll_bar = right_widget.verticalScrollBar()
-            is_at_bottom = (scroll_bar.value() == scroll_bar.maximum())
-            if is_at_bottom:
-                scroll_bar.setValue(scroll_bar.maximum())
+            right_widget.ensureCursorVisible()
+
+            if current_location == max_location:
+                right_widget.verticalScrollBar().setValue(right_widget.verticalScrollBar().maximum())
+            else:
+                right_widget.verticalScrollBar().setValue(current_location)
 
         self.log_updated.connect(update_log)
         self.main_layout.addWidget(right_widget, 1)  # 布局添加到主布局中
@@ -366,20 +369,24 @@ class MainWindow(QMainWindow):
         """
         第二线程(用于轮询日志和轮询脚本执行状态)
         """
-        global is_second_threading, is_execution_threading, is_finish_execution
+        global is_second_threading, is_execution_threading, bat_process
 
         while is_second_threading:
             # 日志轮询检测
             try:
-                with open(self.log_filename, 'r', encoding='utf-8') as log_file1:
-                    log_data1 = log_file1.read()
-                    last_session_logs1 = log_data1.split("--------")[-1]
-                    self.log_updated.emit(last_session_logs1)  # 使用信号在主线程中更新日志
+                current_time = os.path.getmtime(self.log_filename)
+                if current_time != self.last_time:
+                    with open(self.log_filename, 'r', encoding='utf-8') as log_file1:
+                        log_data1 = log_file1.read()
+                        last_session_logs1 = log_data1.split("--------")[-1]
+                        self.log_updated.emit(last_session_logs1)  # 使用信号在主线程中更新日志
+                        self.last_time = current_time
             except FileNotFoundError:
                 self.log_updated.emit("今天的日志文件不存在。")
 
-            if is_execution_threading and is_finish_execution:
+            if is_execution_threading and not bat_process.is_alive():
                 self.on_execution_finished()
+                self.logger.info('本次脚本执行完成！')
                 is_execution_threading = False
 
             time.sleep(0.2)  # 每0.2秒更新一次
@@ -388,14 +395,13 @@ class MainWindow(QMainWindow):
         """
         终止执行
         """
-        global is_execution_threading, is_finish_execution, bat_process
+        global is_execution_threading, bat_process
         if bat_process is not None and bat_process.is_alive():
             bat_process.terminate()
             bat_process.join()
             bat_process = None
 
         is_execution_threading = False
-        is_finish_execution = True
 
         self.on_execution_finished()
         self.logger.info('手动终止了脚本执行！')

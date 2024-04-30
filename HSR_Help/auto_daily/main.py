@@ -11,6 +11,9 @@ def main():
 
     app = QApplication([])
     window = MainWindow(logger)
+    logger.info('\n--------')
+    logger.info("NOOB PROJECT BY MORNING_MAPLE :|")
+    logger.info('>>>> 初始化完毕')
     window.show()
 
     sys.exit(app.exec())
