@@ -5,6 +5,7 @@ from logging import Logger
 from typing import Any
 
 import cv2
+import pyautogui
 import pyautogui as pg
 import pygetwindow as gw
 from pygetwindow import Win32Window
@@ -87,34 +88,39 @@ def auto_do_daily():
 
     pg.press('m')
     time.sleep(3)
-    # 委托派遣
-    if config["project"]["wt"] == 1:
-        time.sleep(2)
-        res = wt()
-        if not res:
-            logger.warning('委托执行异常结束')
-            return False
 
-    # 副本挑战
-    if config["project"]["fb"] == 1:
-        res = fb_challenge()
-        if not res:
-            logger.warning('副本挑战执行异常结束')
-            return False
+    try:
+        # 委托派遣
+        if config["project"]["wt"] == 1:
+            time.sleep(2)
+            res = wt()
+            if not res:
+                logger.warning('委托执行异常结束')
+                return RuntimeError
 
-    # 无名勋礼
-    if config["project"]["xl"] == 1:
-        res = xl()
-        if not res:
-            logger.warning('无名勋礼执行异常结束')
-            return False
+        # 副本挑战
+        if config["project"]["fb"] == 1:
+            res = fb_challenge()
+            if not res:
+                logger.warning('副本挑战执行异常结束')
+                return RuntimeError
 
-    # 杂项
-    if config["project"]["sx_q_email"] == 1:
-        res = get_sx_email_q()
-        if not res:
-            logger.warning('实训、助战奖励、邮件领取执行异常结束')
-            return False
+        # 无名勋礼
+        if config["project"]["xl"] == 1:
+            res = xl()
+            if not res:
+                logger.warning('无名勋礼执行异常结束')
+                return RuntimeError
+
+        # 杂项
+        if config["project"]["sx_q_email"] == 1:
+            res = get_sx_email_q()
+            if not res:
+                logger.warning('实训、助战奖励、邮件领取执行异常结束')
+                return RuntimeError
+    except RuntimeError:
+        logger.warning('运行时异常退出...')
+        return False
 
     logger.info('全部项目已完成！')
     logger.info('======== 分割线 ========')
