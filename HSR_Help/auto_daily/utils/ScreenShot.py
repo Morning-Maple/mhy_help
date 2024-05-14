@@ -9,6 +9,8 @@ class ScreenShot:
     screen_regions = (0, 0, 0, 0)
 
     def __init__(self, regions):
+        if regions is None:
+            raise ValueError
         self.screen_regions = regions
 
     def __new__(cls, *args, **kwargs):

@@ -61,10 +61,14 @@ def image_contrast(template_src, regions=None, is_show_detail=False):
         regions: 截图区域（为None则使用默认的截图区域）
         is_show_detail: 是否展示匹配的详细信息
     Returns:
-        tuple: 一个包含了最佳区域中心位置的x，y元组
+        tuple: 一个包含了最佳区域中心位置（x，y，最佳匹配度）的元组
     """
     global config_default
-    screen = ScreenShot(regions).screenshot()
+    try:
+        screen = ScreenShot(regions).screenshot(regions)
+    except Exception as e:
+        raise e
+
     template_image = cv2.imread(template_src, cv2.IMREAD_GRAYSCALE)
     if screen is None or template_image is None:
         raise IOError('无法加载图片')
@@ -112,7 +116,7 @@ def image_contrast(template_src, regions=None, is_show_detail=False):
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    return center_x, center_y
+    return center_x, center_y, best_val
 
 
 def extra_handle_image(method: ImageOperation, screen):
