@@ -1,3 +1,7 @@
+"""
+截图类
+"""
+
 import pyautogui as pg
 
 

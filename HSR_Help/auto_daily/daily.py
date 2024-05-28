@@ -5,7 +5,6 @@ from logging import Logger
 from typing import Any
 
 import cv2
-import pyautogui
 import pyautogui as pg
 import pygetwindow as gw
 from pygetwindow import Win32Window
@@ -13,7 +12,7 @@ from pygetwindow import Win32Window
 import Types
 from config.logger import LoggerLevel
 from utils.utils import ImageOperation, repeat_check, listen_for_double_space
-from utils.ConfigValueCheck import check_config_value
+from utils.ConfigValueCheck import check_config
 
 logger: Logger
 
@@ -147,7 +146,7 @@ def fb_challenge():
         detail = item["detail"]  # 副本细节
         rounds = item["round"]  # 次数
 
-        res = check_config_value()
+        res = check_config()
         if not res:
             logger.error(config_default['text']['settingError'])
             return False

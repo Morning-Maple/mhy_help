@@ -1,10 +1,13 @@
+"""
+图像对比类
+"""
+
 import json
 import time
 from enum import Enum
 
 import cv2
 import numpy as np
-from ScreenShot import ScreenShot
 
 with open('config/default_config.json', 'r', encoding='utf-8') as f:
     config_default = json.load(f)
@@ -12,8 +15,17 @@ with open('config/default_config.json', 'r', encoding='utf-8') as f:
 
 class ImageOperation(Enum):
     GRAY = 0
+    """
+    灰度
+    """
     CANNY = 1
+    """
+    边缘
+    """
     THRESHOLD = 2
+    """
+    二值化
+    """
 
 
 def get_variance(a, b):
@@ -53,21 +65,17 @@ def get_variance(a, b):
     return sum_variance
 
 
-def image_contrast(template_src, regions=None, is_show_detail=False):
+def image_contrast(template_src, screen, is_show_detail=False):
     """
     图片匹配
     Args:
         template_src: 模板图片地址
-        regions: 截图区域（为None则使用默认的截图区域）
+        screen: 窗口截图
         is_show_detail: 是否展示匹配的详细信息
     Returns:
         tuple: 一个包含了最佳区域中心位置（x，y，最佳匹配度）的元组
     """
     global config_default
-    try:
-        screen = ScreenShot(regions).screenshot(regions)
-    except Exception as e:
-        raise e
 
     template_image = cv2.imread(template_src, cv2.IMREAD_GRAYSCALE)
     if screen is None or template_image is None:
@@ -119,12 +127,17 @@ def image_contrast(template_src, regions=None, is_show_detail=False):
     return center_x, center_y, best_val
 
 
-def extra_handle_image(method: ImageOperation, screen):
+def extra_handle_image(method: ImageOperation, screen, CANNY_threshold1=100, CANNY_threshold2=200,
+                       THRESHOLD_threshold_value=127, THRESHOLD_max_value=255):
     """
     对图片进行更多处理（灰度，边缘等）
     Args:
         method: 处理方法
         screen: 模板图片
+        CANNY_threshold1: CANNY下阈值1
+        CANNY_threshold2: CANNY下阈值2
+        THRESHOLD_threshold_value: THRESHOLD下用于分割像素的阈值
+        THRESHOLD_max_value: 高于阈值的像素所设置的值
     Returns:
         处理后的图片
     """
@@ -136,10 +149,10 @@ def extra_handle_image(method: ImageOperation, screen):
                 return cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
 
             case ImageOperation.CANNY:
-                return cv2.Canny(screen, threshold1=100, threshold2=200)
+                return cv2.Canny(screen, CANNY_threshold1, CANNY_threshold2)
 
             case ImageOperation.THRESHOLD:
-                _, screen = cv2.threshold(screen, 127, 255, cv2.THRESH_BINARY)
+                _, screen = cv2.threshold(screen, THRESHOLD_threshold_value, THRESHOLD_max_value, cv2.THRESH_BINARY)
                 return screen
     except Exception as e:
         return e

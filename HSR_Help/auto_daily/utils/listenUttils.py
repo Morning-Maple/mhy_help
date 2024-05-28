@@ -1,5 +1,8 @@
-import time
+"""
+事件监听类
+"""
 
+import time
 import keyboard
 
 
