@@ -1,0 +1,20 @@
+{
+  "mode": [
+    {
+      "mode": "Types.ModeType.NZHEC",
+      "detail": "Types.NZHECMode.CH_KLKYSLY",
+      "round": 1
+    }
+  ],
+  "waitCheck": 0,
+  "useFuel": 0,
+  "project": {
+    "weiTuo": 0,
+    "email": 0,
+    "zhuZhan": 0,
+    "fuBen": 1,
+    "shiXun": 0,
+    "xunLi": 0
+  },
+  "button": "f1"
+}
