@@ -1,7 +1,8 @@
 """
 截图类
 """
-
+import cv2
+import numpy as np
 import pyautogui as pg
 
 
@@ -24,8 +25,7 @@ class ScreenShot:
 
     def screenshot(self, regions=None):
         if regions is None:
-            screen = pg.screenshot(self.screen_regions)
+            screen = pg.screenshot(region=self.screen_regions)
         else:
-            screen = pg.screenshot(regions)
-
+            screen = pg.screenshot(region=regions)
         return screen
