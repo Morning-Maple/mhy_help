@@ -63,20 +63,27 @@ def center(center_list: list):
 
 
 class ImagePositioning:
+    _instance = None
     _model = None
 
-    def __init__(self, path: str):
-        self._model = YOLO(path)
+    def __init__(self):
+        self._model = YOLO("../model/best.pt")
 
-    def target_prediction(self, screen: cv2.Mat, target: Types, threshold=0.7):
-        """获取目标的中心位置
-        获取目标在图片的中心位置，期望目标有且只有一个
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = object.__new__(cls)
+        return cls._instance
+
+    def target_prediction_one(self, screen: cv2.Mat, target: Types, threshold=0.7, can_zero=False):
+        """获取单个目标的中心位置
+        获取单个目标在图片的中心位置
         Args:
             screen: 待检测的图像
             target: 感兴趣的目标
             threshold: 阈值
+            can_zero: 检测为0是否需要抛出移除
         Returns:
-            tuple: 感兴趣的目标在图片的位置
+            tuple: 目标置信度和在图片的位置，如果查询为0且can_zero为True，则返回0(置信度)和None(位置)
         Raise:
             ValueError: targe值不合法，检测的对象过多，检测对象为0
         """
@@ -86,12 +93,21 @@ class ImagePositioning:
 
         if len(results) == 1 and results[0].boxes.conf.item() >= threshold:
             return results[0].boxes.conf.item(), center(results[0].boxes.xyxy[0].tolist())
-        if len(results) > 1:
+        elif len(results) == 0 and can_zero is True:
+            return 0, None
+        elif len(results) > 1:
             raise ValueError('检测到多个可匹配对象，但是不知道应该选哪个')
         else:
             raise ValueError(f'{threshold}置信度下匹配不到{target}目标')
 
-    def target_prediction_one_to_many(self, screen: cv2.Mat, target_a: Types, target_b: Types, threshold=0.7):
+    def target_prediction_one_to_many(
+            self, screen: cv2.Mat,
+            target_a: Types,
+            target_b: Types,
+            threshold=0.7,
+            can_zero_a=False,
+            can_zero_b=False
+    ):
         """返回离a最近的b的位置
         通常a只找到一个，b找到多个，然后计算离a最近的b，并且返回该b的坐标
         Args:
@@ -99,19 +115,21 @@ class ImagePositioning:
             target_a: 目标a(预期有且只有一个)
             target_b: 目标b(预期至少有一个)
             threshold: 检测阈值
+            can_zero_a: 目标a是否能接受0个检测结果
+            can_zero_b: 目标b是否能接受0个检测结果
         Returns:
             tuple: 离a最近的b的坐标
         Raises:
-            ValueError: 找不到目标a或者b
+            ValueError: can_zero_a和can_zero_b为Fales时，还找不到目标a或者b
         Examples:
             >>> # 非最终版例子
             >>> b = [(1, 3), (2, 8), (3, 15), (4, 6)]
-            >>> a = 7
+            >>> a = 13
             >>> self.target_prediction_one_to_many(b, a)
-            (4, 6)
+            (3, 15)
 
             >>> b = [(1, 10), (2, 20), (3, 30)]
-            >>> a = 25
+            >>> a = 26
             >>> self.target_prediction_one_to_many(b, a)
             (3, 30)
         """
@@ -127,10 +145,17 @@ class ImagePositioning:
                 x, y = center(result.boxes.xyxy[0].tolist())
                 y_b.append(y)
 
-        if y_a is None:
+        if y_a is None and can_zero_a is True:
+            return 0, 0
+        elif y_a is None:
             raise ValueError(f'检测不到目标：{target_a.get_desc_zn}')
 
         # 计算离目标a最近的目标b的位置
+        if len(y_b) == 0 and can_zero_b is True:
+            return None, 0
+        elif len(y_b) == 0:
+            raise ValueError(f'没有找到任何目标：{target_b.get_desc_zn}')
+
         min_diff = None
         closest_center: tuple = (0, 0)
         for loc in y_b:
@@ -138,12 +163,10 @@ class ImagePositioning:
             diff = abs(y - y_a)
             if min_diff is None:
                 min_diff = diff
+                closest_center = x, y
             elif diff < min_diff:
                 min_diff = diff
-                closest_center = (x, y)
-
-        if closest_center == (0, 0):
-            raise ValueError(f'找不到离目标：{target_a.get_desc_zn} 最近的：{target_b.get_desc_zn}')
+                closest_center = x, y
 
         return closest_center
 
