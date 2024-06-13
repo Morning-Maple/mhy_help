@@ -23,7 +23,7 @@ def setup_logger(debug_mode=False):
     logger.add(sys.stdout, level=console_level)
 
     # 配置文件输出（按天轮转，大小不超过16MB，多进程支持）
-    common_log_file = os.path.join(common_log_dir, f"logs_{today}_{{:02d}}.log")
+    common_log_file = os.path.join(common_log_dir, f"logs_{today}.log")
     logger.add(common_log_file,
                rotation="00:00",
                retention="15 days",

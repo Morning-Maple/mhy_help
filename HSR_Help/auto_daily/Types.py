@@ -26,13 +26,13 @@ class NZHEJMode(Enum):
     """
     YLL6_JYCL = ('雅利洛6_经验材料', 'image/text_NZHEJ_JYCL.png', 'image/text_NZHEJ_YLL6.png')
     YLL6_GZCL = ('雅利洛6_光锥材料', 'image/text_NZHEJ_GZCL.png', 'image/text_NZHEJ_YLL6.png')
-    YLL6_Q = ('雅利洛6_钱', 'image/text_NZHEJ_Q.png', 'text_NZHEJ_YLL6.png')
-    XZ_JYCL = ('仙舟_经验材料', 'image/text_NZHEJ_JYCL.png', 'image/text_NZHEJ_XZ.png')
-    XZ_GZCL = ('仙舟_光锥材料', 'image/text_NZHEJ_GZCL.png', 'image/text_NZHEJ_XZ.png')
-    XZ_Q = ('仙舟_钱', 'image/text_NZHEJ_Q.png', 'image/text_NZHEJ_XZ.png')
+    YLL6_Q    = ('雅利洛6_钱', 'image/text_NZHEJ_Q.png', 'text_NZHEJ_YLL6.png')
+    XZ_JYCL   = ('仙舟_经验材料', 'image/text_NZHEJ_JYCL.png', 'image/text_NZHEJ_XZ.png')
+    XZ_GZCL   = ('仙舟_光锥材料', 'image/text_NZHEJ_GZCL.png', 'image/text_NZHEJ_XZ.png')
+    XZ_Q      = ('仙舟_钱', 'image/text_NZHEJ_Q.png', 'image/text_NZHEJ_XZ.png')
     PNKN_JYCL = ('匹诺康尼_经验材料', 'image/text_NZHEJ_JYCL.png', 'image/text_NZHEJ_PNKN.png')
     PNKN_GZCL = ('匹诺康尼_光锥材料', 'image/text_NZHEJ_GZCL.png', 'image/text_NZHEJ_PNKN.png')
-    PNKN_Q = ('匹诺康尼_钱', 'image/text_NZHEJ_Q.png', 'image/text_NZHEJ_PNKN.png')
+    PNKN_Q    = ('匹诺康尼_钱', 'image/text_NZHEJ_Q.png', 'image/text_NZHEJ_PNKN.png')
 
     def __init__(self, desc, path, loc_path):
         self.desc = desc

@@ -1,19 +1,18 @@
 import sys
 
 from PyQt6.QtWidgets import QApplication
-
-from HSR_Help.auto_daily.config.logger import setup_logging
-from HSR_Help.auto_daily.ui import MainWindow
+from config.loguru_config import setup_logger
+from ui import MainWindow
 
 
 def main():
-    logger = setup_logging()  # 日志初始化
+    logs = setup_logger()  # 日志初始化
+    logs.info('\n--------')
 
     app = QApplication([])
-    window = MainWindow(logger)
-    logger.info('\n--------')
-    logger.info("NOOB PROJECT BY MORNING_MAPLE :|")
-    logger.info('>>>> 初始化完毕')
+    window = MainWindow(logs)
+    logs.info("construct by MORNING_MAPLE :D")
+    logs.info('>>>> 初始化完毕')
     window.show()
 
     sys.exit(app.exec())

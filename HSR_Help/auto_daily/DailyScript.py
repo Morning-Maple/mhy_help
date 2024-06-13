@@ -1,19 +1,39 @@
 import json
+import sys
 import time
+from enum import Enum
 
 import pygetwindow as gw
 import pyautogui as pg
 from config.loguru_config import setup_logger
-from Types import ModeType
+from newTypes import Types
 from utils.ScreenShot import ScreenShot
-from utils.ImagePositioning import image_contrast
+from utils.ImagePositioning import ImagePositioning
+import GameModeTypes as GMT
+
+
+class MouseMode(Enum):
+    """鼠标移动枚举
+    限制输入，用于鼠标定位游戏窗体的左侧滚动栏或右侧滚动栏
+    """
+    LEFT = 0
+    RIGHT = 1
+
+
+class ScrollDirection(Enum):
+    """鼠标滚动枚举
+    限制输入，用于确定对鼠标的滚动限制（只能上或下）
+    """
+    UP = 0
+    DOWN = 1
 
 
 class DailyScript:
     _instance = None
     _auto_battle = False
     _double_speed = False
-    _screen_shot: ScreenShot
+    _screen_shot: ScreenShot = None
+    _ip = None
 
     user_config = None
     logs = None
@@ -24,11 +44,12 @@ class DailyScript:
     w_height = 0
     region = (0, 0, 0, 0)
 
-    def __init__(self, mode: bool):
+    def __init__(self, mode: bool = False):
         self.config_set()
         self.logs_set(mode)
-        self.game_window_set()
         self._screen_shot = ScreenShot(self.region)
+        self.game_window_set()
+        self._ip = ImagePositioning()
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -36,31 +57,38 @@ class DailyScript:
         return cls._instance
 
     def config_set(self):
+        """配置文件初始化
+        读取配置文件并且保存在全局
         """
-        设置配置文件
-        """
-        with open('config/new_config.json', 'r', encoding='utf-8') as f:
+        with open('config/config.json', 'r', encoding='utf-8') as f:
             self.user_config = json.load(f)
 
     def logs_set(self, mode: bool):
         """日志设定"""
         self.logs = setup_logger(mode)
 
-    def r_o(self, x, y, w, h):
-        """region_operation
-            处理截图区域
+    def click(self, loc):
+        """鼠标点击事件
+        接受一个坐标元组，然后执行点击此坐标在目标窗体内的位置，目标窗体位置由类自身属性维护
+        Args:
+            loc(tuple): 一个坐标元组，第一个元素是x，第二个元素是y
+        Examples:
+            >>> import pyautogui
+            >>> windows_x = 50
+            >>> windows_y = 100
+            >>> locs = (10, 20)
+            >>> self.click(locs)
+            >>> # 相当于执行了下面
+            >>> pyautogui.click(windows_x + 10, windows_y + 20)
         """
-        return self.w_left + (x * self.w_width), self.w_top + (y * self.w_height), self.w_width * w, self.w_height * h
-
-    def click(self, x, y, x_operation=0.0, y_operation=0.0):
-        """鼠标点击事件"""
-        pg.click(self.w_left + self.w_left * x_operation + x, self.w_top + self.w_top * y_operation + y)
+        x, y = loc
+        pg.click(round(self.w_left + x), round(self.w_top + y))
 
     def game_window_set(self):
+        """配置窗口位置
+        首次会初始化窗口位置的值，如果再次调用则会检测窗口是否有移动，有则会更新窗口位置数据
         """
-        获取窗口区域大小
-        """
-        game_window = gw.getWindowsWithTitle('崩坏：星穹铁道')
+        game_window = gw.getWindowsWithTitle('崩坏：星穹铁道')[0]
 
         if not game_window.isActive:
             # 防止最小化，同时激活窗口
@@ -71,6 +99,18 @@ class DailyScript:
             # 获取窗口的位置信息
             self.w_left, self.w_top, self.w_width, self.w_height = game_window.left, game_window.top, game_window.width, game_window.height
             self.region = (self.w_left, self.w_top, self.w_width, self.w_height)
+            self._screen_shot.screen_regions = self.region
+
+    def screenshot(self, region: tuple = None):
+        """截图
+        截图前会再次确认游戏窗体位置，然后再调用截图类进行截图
+        Args:
+            region(tuple): 截图区域，不填则采用游戏窗口区域
+        Returns:
+            ScreenShot类截取到的图片
+        """
+        self.game_window_set()
+        return self._screen_shot.screenshot(region)
 
     def run_script(self):
         """脚本运行"""
@@ -78,108 +118,127 @@ class DailyScript:
         pg.press('M')
         time.sleep(1.5)
 
-        if self.user_config["project"]["weiTuo"] == 1:
-            self.wei_tuo()
+        try:
+            if self.user_config["project"]["weiTuo"] == 1:
+                self.wei_tuo()
 
-        if self.user_config["project"]["email"] == 1:
-            self.email()
+            if self.user_config["project"]["email"] == 1:
+                self.email()
 
-        if self.user_config["project"]["zhuZhan"] == 1:
-            self.help_money()
+            if self.user_config["project"]["zhuZhan"] == 1:
+                self.help_money()
 
-        if self.user_config["project"]["fuBen"] == 1:
-            self.fu_ben()
+            if self.user_config["project"]["fuBen"] == 1:
+                self.fu_ben()
 
-        if self.user_config["project"]["shiXun"] == 1:
-            self.shi_xun()
+            if self.user_config["project"]["shiXun"] == 1:
+                self.shi_xun()
 
-        if self.user_config["project"]["xunLi"] == 1:
-            self.xun_li()
+            if self.user_config["project"]["xunLi"] == 1:
+                self.xun_li()
+        except Exception as e:
+            self.logs.info(e)
 
     def wei_tuo(self):
-        """委托派遣"""
+        """委托派遣
+        1. 打开手机，定位委托图标位置并点击
+        2. 判断是否有派遣需要领取
+        2-1. 没有委托领取则跳到步骤3
+        2-2. 有委托则执行全部领取后，点击再次派遣
+        3. 退回到游戏控制界面
+        """
         time.sleep(2)
         pg.press('ESC')
         time.sleep(2)
 
-        screen = self._screen_shot.screenshot(self.r_o(0.67, 1, 0.33, 0.4))
-        x, y, _ = image_contrast('image/button_weituo.png', screen)
-        self.click(x, y, 0.67)
+        screen = self.screenshot()
+        rel, loc = self._ip.target_prediction(screen, Types.button_weituo)
+        self.click(loc)
         time.sleep(1.5)
 
-        # TODO 领取区域不确定
-        screen = self._screen_shot.screenshot(self.r_o(0.5, 0.806, 0.37, 0.0926))
-        x, y, match = image_contrast('image/button_one_click_get_1.png', screen)
-        if match >= 0.9:
-            self.click(x, y, 0.5)
-            time.sleep(1.5)
+        # 委托领取
+        screen = self.screenshot()
+        rel, loc = self._ip.target_prediction(screen, Types.button_receive_all)
+        if rel == 0:
+            self.logs.info('无委托需要被领取！')
         else:
-            self.logs.info("无可领取的委托派遣！")
-            pg.press('ESC')
-            time.sleep(1.5)
-            pg.press('ESC')
-            return
+            self.click(loc)
+            time.sleep(1)
 
-        screen = self._screen_shot.screenshot(self.r_o(0.5, 0.806, 0.37, 0.0926))
-        x, y, match = image_contrast('image/button_again_weituo.png', screen)
-        self.click(x, y, 0.5, 0.806)
-        self.logs.info("日常派遣已经领取且已重新派遣")
-        time.sleep(3)
-
+            # 再次派遣
+            screen = self.screenshot()
+            rel, loc = self._ip.target_prediction(screen, Types.button_weituo_again)
+            self.click(loc)
+            self.logs.info('委托领取成功并已经重新派遣！')
+            time.sleep(2.5)
         pg.press('ESC')
-        time.sleep(1.5)
+        time.sleep(1)
         pg.press('ESC')
 
     def email(self):
-        """邮件领取"""
+        """邮件领取
+        1. 打开手机，定位邮件图标位置并点击
+        2. 判断是否有邮件需要领取，rel为0时则无邮件可领取，否则为有
+        2-1. 没有邮件领取则跳到步骤3
+        2-2. 有邮件则执行全部领取
+        3. 退回到游戏控制界面
+        """
         time.sleep(2)
         pg.press('ESC')
         time.sleep(1.5)
 
-        screen = self._screen_shot.screenshot(self.r_o(0.67, 1, 0.33, 0.4))
-        x, y, _ = image_contrast('image/button_email.png', screen)
-        self.click(x, y, 0.67)
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_email)
+        self.click(loc)
         time.sleep(1.5)
 
-        screen = self._screen_shot.screenshot(self.r_o(1, 0.87, 0.13, 0.292))
-        x, y, match = image_contrast('image/button_all_get.png', screen)
-        if match >= 0.9:
-            self.click(x, y, y_operation=0.87)
-            time.sleep(1.5)
-            pg.press('ESC')
+        # 邮件领取
+        screen = self.screenshot()
+        rel, loc = self._ip.target_prediction(screen, Types.button_get_all, can_zero=True)
+        if rel != 0:
+            self.click(loc)
+            self.logs.info("邮件领取成功!")
             time.sleep(1)
+            pg.press('ESC')
         else:
-            self.logs.info("无邮件可领取！")
+            self.logs.info("无邮件可领取!")
+        time.sleep(1.5)
 
         pg.press('ESC')
         time.sleep(1.5)
         pg.press('ESC')
 
     def help_money(self):
-        """助战奖励"""
+        """助战奖励
+        1. 打开手机，定位委托图标位置并点击
+        2. 判断是否有派遣需要领取，rel为0时则无邮件可领取，否则为有
+        2-1. 没有委托领取则直接退回到游戏控制界面
+        2-2. 有委托则执行全部领取后，再次派遣，然后退回到游戏控制界面
+        """
         time.sleep(2)
         pg.press('ESC')
         time.sleep(1.5)
 
-        screen = self._screen_shot.screenshot(self.r_o(0.891, 1, 210, 130))
-        x, y, _ = image_contrast('image/button_q.png', screen)
-        self.click(x, y, 0.891)
-        time.sleep(1.5)
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_more)
+        self.click(loc)
+        time.sleep(1)
 
-        screen = self._screen_shot.screenshot(self.r_o(0.67, 1, 0.33, 0.4))
-        x, y, _ = image_contrast('image/button_myqz.png', screen)
-        self.click(x, y, 0.67)
-        time.sleep(1.5)
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_manyouqianzheng)
+        self.click(loc)
 
-        screen = self._screen_shot.screenshot(self.r_o(0.792, 1, 0.208, 0.278))
-        x, y, match = image_contrast('image/button_get_q.png', screen)
-        if match >= 0.9:
-            self.click(x, y, y_operation=0.792)
+        # 助战奖励领取
+        screen = self.screenshot()
+        rel, loc = self._ip.target_prediction(screen, Types.button_manyouqianzheng_get, can_zero=True)
+        if rel != 0:
+            self.click(loc)
+            self.logs.info('助战奖励领取成功啾！')
             time.sleep(1.5)
             pg.press('ESC')
             time.sleep(1)
         else:
-            self.logs.info("无邮件可领取！")
+            self.logs.info('没有助战奖励可被领取！')
 
         pg.press('ESC')
         time.sleep(1.5)
@@ -189,51 +248,391 @@ class DailyScript:
         """
         副本挑战
         """
-        pass
+        plan = self.user_config["mode"]
+        for item in plan:
+            mode = item["mode"]
+            detail = item["detail"]
+            rounds = item["round"]
+
+            mode = getattr(getattr(GMT, mode.split('.')[1]), mode.split('.')[2])
+            detail = getattr(getattr(GMT, detail.split('.')[1]), detail.split('.')[2])
+
+            self.choose_mode(mode, detail)
+            self.choose_mode_detail(detail)
+            self.enter_mode()
+            self.battle_count(rounds)
+
+        self.logs.info('副本挑战已完成！')
 
     def shi_xun(self):
-        """实训领取"""
-        pass
+        """实训领取
+        1. 打开手机，定位指南图标位置并点击
+        2. 点击每日实训图标
+        3. 判断实训是否已经满，是则跳到步骤7
+        4. 判断是否有领取图标
+        4-1. 有领取图图标，则循环检测并且点击，直到检测失败
+        4-2. 无领取图标，跳到步骤5
+        5. 领取累积实训点奖励
+        6. 判断本日活跃度是否已满，并且输出日志
+        7. 退回到游戏控制界面
+        """
+        time.sleep(2)
+        pg.press('ESC')
+        time.sleep(1.5)
+
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_zhinan)
+        self.click(loc)
+        time.sleep(1.5)
+
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_shixun)
+        self.click(loc)
+        time.sleep(1)
+
+        # 首次判断是否实训满，是则日志输出，然后直接返回
+        rel, _ = self._ip.target_prediction(screen, Types.text_enough, can_zero=True, is_one=False)
+        if rel != 0:
+            self.logs('实训已满，无需领取')
+            pg.press('ESC')
+            time.sleep(1.5)
+            pg.press('ESC')
+            return
+
+        # 循环检测领取按钮，直到拿全
+        while True:
+            time.sleep(0.5)
+            screen = self.screenshot()
+            rel, loc = self._ip.target_prediction(screen, Types.button_get, can_zero=True, is_one=False)
+            if rel != 0:
+                self.click(loc)
+            else:
+                break
+
+        # 实训奖励领取
+        rel, loc = self._ip.target_prediction(screen, Types.button_shixun_get, can_zero=True, is_one=False)
+        if rel != 0:
+            self.click(loc)
+
+        # 判断实训是否已满，日志输出
+        rel, _ = self._ip.target_prediction(screen, Types.text_enough, can_zero=True, is_one=False)
+        if rel == 0:
+            self.logs('实训领取成功，但仍”>未满<“500实训点！')
+        else:
+            self.logs('实训领取成功，并且已经满了500实训点！')
+            time.sleep(1)
+            pg.press('ESC')
+            time.sleep(1)
+
+        pg.press('ESC')
+        time.sleep(1.5)
+        pg.press('ESC')
 
     def xun_li(self):
-        """巡礼领取"""
+        """勋礼领取
+        1. 打开手机，定位无名勋礼图标位置并点击
+        2. 点击任务图标
+        3. 点击本周任务，判断是否有领取图标，有则执行点击领取，无则跳到步骤4
+        4. 点击本期任务，判断是否有领取图标，有则执行点击领取，无则跳到步骤5
+        5. 点击奖励图标，判断是否有领取图标，有则执行点击领取，无则跳到步骤6
+        6. 退回到游戏控制界面
+        """
+        time.sleep(2)
+        pg.press('ESC')
+        time.sleep(1.5)
 
-        pass
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_xunli)
+        self.click(loc)
+        time.sleep(2)
 
-    def choose_mode(self):
-        """模式大类选择"""
-        pass
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_xunli_renwu)
+        self.click(loc)
+        time.sleep(1)
 
-    def choose_mode_detail(self):
-        """模式小类选择"""
-        pass
+        # --任务部分
+        # 本周任务
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_xunli_renwu_week)
+        self.click(loc)
+        time.sleep(1)
+
+        screen = self.screenshot()
+        rel, loc = self._ip.target_prediction(screen, Types.button_receive_all, can_zero=True)
+        if rel != 0:
+            self.click(loc)
+            self.logs.info('领取了本周任务的所有可领取的进度')
+            time.sleep(3)
+
+        # 本期任务
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_xunli_renwu_version)
+        self.click(loc)
+        time.sleep(1)
+
+        screen = self.screenshot()
+        rel, loc = self._ip.target_prediction(screen, Types.button_receive_all, can_zero=True)
+        if rel != 0:
+            self.click(loc)
+            self.logs.info('领取了>本期<任务的所有可领取的进度')
+            time.sleep(3)
+
+        # --奖励部分
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_xunli_jiangli)
+        self.click(loc)
+        time.sleep(1)
+
+        screen = self.screenshot()
+        rel, loc = self._ip.target_prediction(screen, Types.button_receive_all, can_zero=True)
+        if rel != 0:
+            self.click(loc)
+            self.logs.info('领取了无名勋礼中所有可领取的奖励')
+            time.sleep(1.5)
+            pg.press('ESC')
+            time.sleep(1)
+
+        self.logs.info('勋礼执行完成')
+        pg.press('ESC')
+        time.sleep(1.5)
+        pg.press('ESC')
+
+    def choose_mode(self, mode: GMT.ModeType, detail: GMT.NZHEJMode = None):
+        """模式大类选择
+        右侧导航栏模式选择
+        Args:
+            mode(GMT.ModeType): 模式大类枚举
+            detail(GMT.NZHEJMode): 如果模式为拟造花萼金，那么此项必填
+        """
+        if mode == GMT.NZHEJMode and detail is None:
+            raise ValueError('模式为拟造花萼(金)时，第二参数不能为空！')
+
+        time.sleep(2)
+        pg.press('ESC')
+        time.sleep(1.5)
+
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_zhinan)
+        self.click(loc)
+        time.sleep(1.5)
+
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_suoying)
+        self.click(loc)
+        time.sleep(1.5)
+
+        # 开始寻找大类
+        find = 0
+        while True:
+            find += 1
+            screen = self.screenshot()
+            rel, loc = self._ip.target_prediction(screen, mode.get_types, can_zero=True, threshold=0.9)
+            if rel == 0:
+                self.mouse_handle(MouseMode.LEFT, scroll=True)
+            else:
+                self.click(loc)
+                time.sleep(1)
+                break
+
+            # 如果检测到底部了还没找到，并且检测轮次，则只检测多一次，提高响应
+            screen = self.screenshot()
+            rel, _ = self._ip.target_prediction(screen, Types.LZYX, can_zero=True, threshold=0.9)
+            if rel != 0 and find < 4:
+                find = 4
+                continue
+
+            if find >= 4:
+                raise ValueError(f'找不到模式:{mode.get_desc}！')
+
+        if mode == GMT.NZHEJMode:
+            self.choose_mode_NZHEJ_country(detail)
+
+    def choose_mode_NZHEJ_country(self, mode: GMT.NZHEJMode):
+        """拟造花萼（金）模式下，选择地区
+        拟造花萼（金）模式下，选择地区（雅利洛6，仙舟，匹诺康尼）
+        Args:
+            mode(GMT.NZHEJMode): 拟造花萼（金）枚举类的枚举
+        """
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, mode.get_country, can_zero=True, threshold=0.9)
+        self.click(loc)
+        time.sleep(1.5)
+
+    def choose_mode_detail(self, mode: GMT.NZHEJMode | GMT.NZHECMode | GMT.NZXYMode | GMT.QSSDMode | GMT.LZYXMode):
+        """模式小类选择
+        左侧导航栏模式选择
+        Args:
+            mode(GMT.NZHEJMode | GMT.NZHECMode | GMT.NZXYMode | GMT.QSSDMode | GMT.LZYXMode): 模式小类枚举
+        """
+        find = 0
+        detail_types: Types
+        while True:
+            find += 1
+            screen = self.screenshot()
+            loc = self._ip.target_prediction_one_to_many(
+                screen, mode.get_types, Types.button_teleport, Types.button_follow, 0.9, True)
+            if loc[0] == 0:
+                self.mouse_handle(MouseMode.RIGHT, scroll=True)
+            else:
+                self.click(loc)
+                time.sleep(1)
+                break
+
+            # 如果检测到底部了还没找到，并且检测轮次，则只检测多一次，提高响应
+            screen = self.screenshot()
+            match mode:
+                case GMT.NZHEJMode:
+                    # 底部是信用点（钱）
+                    detail_types = Types.NZHEJ_Q
+                case GMT.NZHECMode:
+                    # 底部是虚无丹鼎司的行迹材料
+                    detail_types = GMT.NZHECMode.XW_DDS.get_types
+                case GMT.NZXYMode:
+                    # 底部是突破素材副本职司之形
+                    detail_types = GMT.NZXYMode.ZS.get_types
+                case GMT.QSSDMode:
+                    # 底部是遗器副本死水钟表匠套
+                    detail_types = GMT.QSSDMode.MQ.get_types
+                case GMT.LZYXMode:
+                    # 底部是周本尘梦的赞礼
+                    detail_types = GMT.LZYXMode.CMDZL.get_types
+
+            rel, _ = self._ip.target_prediction(screen, detail_types, can_zero=True, threshold=0.9)
+            if rel != 0 and find < 16:
+                find = 16
+                continue
+
+            if find >= 16:
+                raise ValueError(f'找不到模式:{mode.get_desc}！')
 
     def enter_mode(self):
         """进入挑战"""
-        time.sleep(4)
-        self.click(290, 40, 0.698, 0.874)
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_challenge)
+        self.click(loc)
         time.sleep(2)
-        self.click(290, 40, 0.698, 0.874)
+
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_start)
+        self.click(loc)
+        time.sleep(2)
 
     def power_check(self):
-        """体力检测"""
-        screen = self._screen_shot.screenshot(self.r_o(0.4323, 0.2963, 0.13542, 0.05556))
-        _, _, match = image_contrast('image/text_no_tili.png', screen)
-        return match >= 0.9
+        """体力检测
+        检测是否体力不足，是则返回True，否则返回False
+        Returns:
+            bool: True，如果体力不足，否则返回False
+        """
+        screen = self.screenshot()
+        rel, _ = self._ip.target_prediction(screen, Types.text_no_power, can_zero=True, threshold=0.8)
+        time.sleep(1)
+        return rel == 0
 
     def use_fuel(self):
         """使用体力药"""
         pass
 
-    def battle_monitor(self):
-        """战斗情况检测"""
-        time.sleep(1)
-        screen = self._screen_shot.screenshot(self.r_o(0.2417, 0.2157, 0.521, 0.417))
-        _, _, match = image_contrast('image/text_challengeSuccess.png', screen)
+    def battle_count(self, count):
+        """副本战斗处理
+        处理每个副本的循环挑战逻辑和执行情况，如果参数为0，没有体力后会自动退出执行下一步，否则会抛出体力不足的异常
+        Args:
+            count(int): 需要挑战的次数
+        Raise:
+            RuntimeError: 没打过副本，挑战失败，超时
+        """
+        progress = (count - 1, count)
+        rounds = progress[0]
+        logs_output = True
 
-        return match >= 0.9
+        # count为0则是一直挑战到体力不足为止
+        if count == 0:
+            logs_output = False
+            rounds = 99999
+
+        for _ in range(rounds):
+            # 战斗监测（成功、失败、超时）
+            res = self.battle_monitor()
+            if res is False:
+                raise RuntimeError('副本挑战失败！')
+
+            # 再次战斗
+            self.battle_again()
+            # 体力监测
+            res = self.power_check()
+            if res is True:
+                if logs_output:
+                    self.logs.info(f'进行到({progress[0]}/{progress[1]})时，开拓力不足以进行下一轮战斗')
+                else:
+                    break
+
+        # 退出副本，准备处理下一个挑战
+        time.sleep(1)
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_leave, can_zero=True)
+        self.click(loc)
+        time.sleep(8)
+
+    def battle_monitor(self):
+        """战斗情况监测
+        每两秒检测一次战斗情况，如果300秒(五分钟)内挑战成功，返回True，否则返回False
+        Returns:
+            bool: 300秒(五分钟)内挑战成功，返回True，否则返回False
+        """
+        start_time = time.time()
+        while round(time.time() - start_time) < 300:
+            screen = self.screenshot()
+            # 挑战成功
+            rel, _ = self._ip.target_prediction(screen, Types.text_success, can_zero=True)
+            if rel == 0:
+                return True
+
+            # 挑战失败
+            rel, _ = self._ip.target_prediction(screen, Types.text_fail, can_zero=True)
+            if rel == 0:
+                self.logs.info('怎么回事？你没打过啾！')
+                return False
+            time.sleep(2)
+        self.logs.info(f'用时超过了{300}秒，挑战超时啾！')
+        return False
 
     def battle_again(self):
         """再次挑战"""
-        self.click(0, 0, 0.640625, 0.875)
         time.sleep(1)
+        screen = self.screenshot()
+        _, loc = self._ip.target_prediction(screen, Types.button_again)
+        self.click(loc)
+
+    def mouse_handle(self, mode: MouseMode, direction: ScrollDirection = ScrollDirection.DOWN, scroll=False, count=8):
+        """鼠标事件处理
+        支持鼠标移动到窗体的左侧或右侧导航栏，并支持在这些导航栏处滚动它们
+        Args:
+            mode(MouseMode): 定义鼠标是移动到左侧导航栏还是右侧导航栏
+            direction(ScrollDirection): 定义滚动方向，默认为向下
+            scroll(bool): 是否开启鼠标滚动，默认为False
+            count(int): 鼠标滚动次数，默认为8
+        Examples:
+            >>> # 移动到右侧导航栏，然后向上滚动六次
+            >>> self.mouse_handle(MouseMode.RIGHT, ScrollDirection.UP, True, 6)
+        """
+        match mode:
+            case mode.LEFT:
+                pg.moveTo(self.w_left + 0.23 * self.w_width, self.w_top + 0.53 * self.w_height)
+            case mode.RIGHT:
+                pg.moveTo(self.w_left + 0.81 * self.w_width, self.w_top + 0.54 * self.w_height)
+            case _:
+                raise ValueError(f'{mode}的值不合法！')
+
+        time.sleep(0.1)
+        if scroll:
+            standard = 100
+            if direction is ScrollDirection.DOWN:
+                standard = -standard
+            for _ in range(count):
+                pg.scroll(standard)
+
+
+if __name__ == "__main__":
+    # DailyScript(True).run_script()
+    DailyScript(True).mouse_handle(MouseMode.RIGHT, scroll=True, count=8)
+    sys.exit()

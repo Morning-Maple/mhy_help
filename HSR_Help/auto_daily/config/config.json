@@ -1,23 +1,24 @@
 {
-  "mode": [
-    {
-      "mode": "Types.ModeType.NZXY",
-      "detail": "Types.NZXYMode.SJ",
-      "round": 1
-    },
-    {
-      "mode": "Types.ModeType.NZHEJ",
-      "detail": "Types.NZHEJMode.YLL6_JYCL",
-      "round": 3
+    "mode": [
+        {
+            "mode": "GMT.ModeType.NZHEC",
+            "detail": "GMT.NZHECMode.XW_DDS",
+            "round": 6
+        },
+        {
+            "mode": "GMT.ModeType.NZHEC",
+            "detail": "GMT.NZHECMode.CH_KLKYSLY",
+            "round": 1
+        }
+    ],
+    "waitCheck": 1,
+    "useFuel": 0,
+    "project": {
+        "weiTuo": 0,
+        "email": 1,
+        "zhuZhan": 1,
+        "fuBen": 1,
+        "shiXun": 0,
+        "xunLi": 1
     }
-  ],
-  "resolution": "1920x1080",
-  "waitCheck": 0,
-  "project": {
-    "wt": 1,
-    "fb": 1,
-    "xl": 1,
-    "sx_q_email": 1
-  },
-  "button": "f10"
 }

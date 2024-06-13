@@ -9,9 +9,8 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, \
     QComboBox, QLabel, QGridLayout, QCheckBox, QSpinBox, QScrollArea
 
-import Types
-import daily as d
-import config.logger as lo
+import GameModeTypes as GMT
+import DailyScript as d
 
 bat_process: multiprocessing
 is_second_threading = True  # 日志读取线程是否开启
@@ -20,8 +19,7 @@ is_execution_threading = False  # 获取脚本执行情况线程是否开启
 
 def execution():
     """真正执行脚本的进程"""
-    d.set_logger(lo.setup_logging())
-    d.auto_do_daily()
+    d.DailyScript().run_script()
 
 
 class MainWindow(QMainWindow):
@@ -36,8 +34,6 @@ class MainWindow(QMainWindow):
         self.last_time = None
 
         # 文件读取
-        with open('config/default_config.json', 'r', encoding='utf-8') as f1:
-            self.config_default = json.load(f1)
         with open('config/config.json', 'r', encoding='utf-8') as f2:
             self.config = json.load(f2)
 
@@ -70,34 +66,30 @@ class MainWindow(QMainWindow):
         left_widget = QWidget()
         left_layout = QGridLayout()
 
-        # 分辨率
-        resolution_layout = QHBoxLayout()
-        resolution_label = QLabel("分辨率：")
-        self.resolution_combobox = QComboBox()
-        self.resolution_combobox.addItems(self.config_default["resolution"])
-        self.resolution_combobox.setCurrentText(self.config["resolution"])
-        resolution_layout.addWidget(resolution_label, 1)
-        resolution_layout.addWidget(self.resolution_combobox, 100)
-        left_layout.addLayout(resolution_layout, 0, 0)
-
         # 功能复选框
         checkbox_group_layout = QHBoxLayout()
         project_label = QLabel("功能：")
-        self.challenge_checkbox = QCheckBox("副本挑战")
-        self.delegate_checkbox = QCheckBox("委托派遣")
-        self.honor_checkbox = QCheckBox("无名勋礼")
-        self.misc_checkbox = QCheckBox("杂项（实训、邮件和助战奖励）")
+        self.fun1 = QCheckBox("委托派遣")
+        self.fun2 = QCheckBox("邮件")
+        self.fun3 = QCheckBox("助战奖励")
+        self.fun4 = QCheckBox("副本挑战")
+        self.fun5 = QCheckBox("实训")
+        self.fun6 = QCheckBox("无名勋礼")
         # 根据配置设置复选框的状态
-        self.challenge_checkbox.setChecked(self.config["project"]["fb"] == 1)
-        self.delegate_checkbox.setChecked(self.config["project"]["wt"] == 1)
-        self.honor_checkbox.setChecked(self.config["project"]["xl"] == 1)
-        self.misc_checkbox.setChecked(self.config["project"]["sx_q_email"] == 1)
+        self.fun1.setChecked(self.config["project"]["weiTuo"] == 1)
+        self.fun2.setChecked(self.config["project"]["email"] == 1)
+        self.fun3.setChecked(self.config["project"]["zhuZhan"] == 1)
+        self.fun4.setChecked(self.config["project"]["fuBen"] == 1)
+        self.fun5.setChecked(self.config["project"]["shiXun"] == 1)
+        self.fun6.setChecked(self.config["project"]["xunLi"] == 1)
 
         checkbox_group_layout.addWidget(project_label)
-        checkbox_group_layout.addWidget(self.challenge_checkbox)
-        checkbox_group_layout.addWidget(self.delegate_checkbox)
-        checkbox_group_layout.addWidget(self.honor_checkbox)
-        checkbox_group_layout.addWidget(self.misc_checkbox)
+        checkbox_group_layout.addWidget(self.fun1)
+        checkbox_group_layout.addWidget(self.fun2)
+        checkbox_group_layout.addWidget(self.fun3)
+        checkbox_group_layout.addWidget(self.fun4)
+        checkbox_group_layout.addWidget(self.fun5)
+        checkbox_group_layout.addWidget(self.fun6)
         left_layout.addLayout(checkbox_group_layout, 1, 0)
 
         # 副本为['侵蚀隧洞', '历战余响']时是否需要暂停以查看遗器属性
@@ -107,26 +99,15 @@ class MainWindow(QMainWindow):
         fb_extra_layout.addWidget(self.fb_extra_func)
         left_layout.addLayout(fb_extra_layout, 2, 0)
 
-        # 呼起星际和平指南的快捷键的快捷键
-        button_extra_layout = QHBoxLayout()
-        button_label = QLabel("呼起星际和平指南的快捷键：")
-        self.button_dropdown = QComboBox()
-        for i in range(1, 13):
-            self.button_dropdown.addItem(f"F{i}", f"f{i}")
-        self.button_dropdown.setCurrentText(self.config["button"].upper())
-        button_extra_layout.addWidget(button_label)
-        button_extra_layout.addWidget(self.button_dropdown)
-        left_layout.addLayout(button_extra_layout, 3, 0)
-
         # 副本挑战被选中的时候出现复选框
         self.add_button = QPushButton("新增")
-        self.add_button.setEnabled(self.config["project"]["fb"] == 1)
+        self.add_button.setEnabled(self.config["project"]["fuBen"] == 1)
         self.remove_all_button = QPushButton("去除全部")
-        self.remove_all_button.setEnabled(self.config["project"]["fb"] == 1)
+        self.remove_all_button.setEnabled(self.config["project"]["fuBen"] == 1)
         fb_buttons_layout = QHBoxLayout()
         fb_buttons_layout.addWidget(self.add_button)
         fb_buttons_layout.addWidget(self.remove_all_button)
-        left_layout.addLayout(fb_buttons_layout, 4, 0)
+        left_layout.addLayout(fb_buttons_layout, 3, 0)
 
         challenge_container = QWidget()
         self.challenge_layout = QVBoxLayout()
@@ -135,14 +116,14 @@ class MainWindow(QMainWindow):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setWidget(challenge_container)
-        self.scroll_area.setEnabled(self.config["project"]["fb"] == 1)
+        self.scroll_area.setEnabled(self.config["project"]["fuBen"] == 1)
 
-        self.challenge_checkbox.stateChanged.connect(self.challenge_checkbox_changed)
+        self.fun4.stateChanged.connect(self.challenge_checkbox_changed)
 
         # 添加一个弹性空间以确保内容从上往下添加
         self.challenge_layout.addStretch()
         # 副本挑战选项容器
-        left_layout.addWidget(self.scroll_area, 5, 0)
+        left_layout.addWidget(self.scroll_area, 4, 0)
 
         # 沿用配置文件中的内容
         for mode_data in self.config["mode"]:
@@ -162,7 +143,7 @@ class MainWindow(QMainWindow):
         bottom_buttons_layout.addWidget(self.save_config_button)
         bottom_buttons_layout.addWidget(self.start_execution_button)
         bottom_buttons_layout.addWidget(self.stop_execution_button)
-        left_layout.addLayout(bottom_buttons_layout, 6, 0)  # 将底部按钮布局添加到左侧布局中
+        left_layout.addLayout(bottom_buttons_layout, 5, 0)  # 将底部按钮布局添加到左侧布局中
 
         self.save_config_button.clicked.connect(self.save_config)
         self.start_execution_button.clicked.connect(self.start_execution)
@@ -191,7 +172,7 @@ class MainWindow(QMainWindow):
         spinbox.setEnabled(True)
         remove_button = QPushButton("去除")
 
-        for mode in Types.ModeType:
+        for mode in GMT.ModeType:
             dropdown_a.addItem(mode.desc, mode)  # 使用枚举的名称作为显示文本，枚举本身作为数据
 
         def dropdown_a_changed(index):
@@ -199,20 +180,20 @@ class MainWindow(QMainWindow):
             dropdown_b.clear()
             modes = dropdown_a.itemData(index)  # 获取选中的枚举值
             match modes:
-                case Types.ModeType.NZHEJ:
-                    for detail in Types.NZHEJMode:
+                case GMT.ModeType.NZHEJ:
+                    for detail in GMT.NZHEJMode:
                         dropdown_b.addItem(detail.desc, detail)
-                case Types.ModeType.NZHEC:
-                    for detail in Types.NZHECMode:
+                case GMT.ModeType.NZHEC:
+                    for detail in GMT.NZHECMode:
                         dropdown_b.addItem(detail.desc, detail)
-                case Types.ModeType.NZXY:
-                    for detail in Types.NZXYMode:
+                case GMT.ModeType.NZXY:
+                    for detail in GMT.NZXYMode:
                         dropdown_b.addItem(detail.desc, detail)
-                case Types.ModeType.QSSD:
-                    for detail in Types.QSSDMode:
+                case GMT.ModeType.QSSD:
+                    for detail in GMT.QSSDMode:
                         dropdown_b.addItem(detail.desc, detail)
-                case Types.ModeType.LZYX:
-                    for detail in Types.LZYXMode:
+                case GMT.ModeType.LZYX:
+                    for detail in GMT.LZYXMode:
                         dropdown_b.addItem(detail.desc, detail)
 
             dropdown_b.setEnabled(index > 0)
@@ -243,8 +224,8 @@ class MainWindow(QMainWindow):
 
         # 首次读取时沿用配置文件中的内容
         if mode_entry:
-            mode_type = getattr(Types.ModeType, mode_entry["mode"].split(".")[-1])
-            detail_type = getattr(getattr(Types, mode_entry["mode"].split(".")[-1] + "Mode"),
+            mode_type = getattr(GMT.ModeType, mode_entry["mode"].split(".")[-1])
+            detail_type = getattr(getattr(GMT, mode_entry["mode"].split(".")[-1] + "Mode"),
                                   mode_entry["detail"].split(".")[-1])
             dropdown_a.setCurrentIndex(dropdown_a.findData(mode_type))
             dropdown_b.setCurrentIndex(dropdown_b.findData(detail_type))
@@ -264,22 +245,19 @@ class MainWindow(QMainWindow):
 
     def save_config(self):
         """保存配置"""
-        # 分辨率
-        self.config["resolution"] = self.resolution_combobox.currentText()
 
         # 是否需要暂停查看遗器属性
         self.config["waitCheck"] = 1 if self.fb_extra_func.isChecked() else 0
 
         # 项目
         self.config["project"] = {
-            "wt": 1 if self.delegate_checkbox.isChecked() else 0,
-            "fb": 1 if self.challenge_checkbox.isChecked() else 0,
-            "xl": 1 if self.honor_checkbox.isChecked() else 0,
-            "sx_q_email": 1 if self.misc_checkbox.isChecked() else 0
+            "weiTuo": 1 if self.fun1.isChecked() else 0,
+            "email": 1 if self.fun2.isChecked() else 0,
+            "zhuZhan": 1 if self.fun3.isChecked() else 0,
+            "fuBen": 1 if self.fun4.isChecked() else 0,
+            "shiXun": 1 if self.fun5.isChecked() else 0,
+            "xunLi": 1 if self.fun6.isChecked() else 0
         }
-
-        # 呼起星际和平指南的快捷键
-        self.config["button"] = self.button_dropdown.currentText().lower()
 
         # 副本挑战的配置
         self.config['mode'] = []
@@ -292,8 +270,8 @@ class MainWindow(QMainWindow):
                 spinbox = layout.itemAt(2).widget()
                 if dropdown_a.currentData() is not None and dropdown_b.currentData() is not None:
                     mode_entry = {
-                        'mode': f"Types.ModeType.{dropdown_a.currentData().name}",
-                        'detail': f"Types.{dropdown_a.currentData().name}Mode.{dropdown_b.currentData().name}",
+                        'mode': f"GMT.ModeType.{dropdown_a.currentData().name}",
+                        'detail': f"GMT.{dropdown_a.currentData().name}Mode.{dropdown_b.currentData().name}",
                         'round': spinbox.value()
                     }
                     self.config['mode'].append(mode_entry)
@@ -338,7 +316,7 @@ class MainWindow(QMainWindow):
         right_widget.setReadOnly(True)  # 设置为只读，使其仅用于显示日志
 
         current_date = datetime.now().strftime('%Y%m%d')
-        self.log_filename = f'logs/log_{current_date}.log'
+        self.log_filename = f'logs/common/logs_{current_date}.log'
         self.last_time = os.path.getmtime(self.log_filename)
         try:
             with open(self.log_filename, 'r', encoding='utf-8') as log_file:
