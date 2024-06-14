@@ -61,9 +61,15 @@ def center(center_list: list):
 class ImagePositioning:
     _instance = None
     _model = None
+    _verbose = True
 
-    def __init__(self):
+    def __init__(self, mode=True):
+        """
+        Args:
+            mode(bool): 是否输出测试日志，线上版本请置为False
+        """
         self._model = YOLO("../model/best.pt")
+        self._verbose = mode
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -86,7 +92,7 @@ class ImagePositioning:
         """
         if target is None:
             raise ValueError('不合法的目标值')
-        results = self._model.predict(screen, half=True, classes=[target.get_number])
+        results = self._model.predict(screen, half=True, classes=[target.get_number], verbose=self._verbose)
 
         # 有查询到结果，走这
         if len(results[0].boxes) != 0:
@@ -142,7 +148,9 @@ class ImagePositioning:
             raise ValueError('错误的传参')
         results = self._model.predict(screen,
                                       half=True,
-                                      classes=[target_a.get_number, target_b.get_number, target_c.get_number])
+                                      classes=[target_a.get_number, target_b.get_number, target_c.get_number],
+                                      verbose=self._verbose
+                                      )
 
         y_a = []
         y_b = []

@@ -46,11 +46,15 @@ class DailyScript:
     region = (0, 0, 0, 0)
 
     def __init__(self, mode: bool = False):
+        """
+        Args:
+            mode(bool): True为开发模式，以DEBUG形式输出，False则是线上版本环境
+        """
         self.config_set()
         self.logs_set(mode)
         self._screen_shot = ScreenShot(self.region)
         self.game_window_set()
-        self._ip = ImagePositioning()
+        self._ip = ImagePositioning(mode)
         self._pre = mode  # True就是开发模式，处于DEBUG状态
 
     def __new__(cls, *args, **kwargs):
@@ -245,8 +249,9 @@ class DailyScript:
         else:
             self.logs.info('没有助战奖励可被领取！')
 
+        time.sleep(1)
         pg.press('ESC')
-        time.sleep(1.5)
+        time.sleep(2)
         pg.press('ESC')
 
     def fu_ben(self):
