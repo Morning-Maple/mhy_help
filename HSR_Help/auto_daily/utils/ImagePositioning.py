@@ -88,15 +88,23 @@ class ImagePositioning:
             raise ValueError('不合法的目标值')
         results = self._model.predict(screen, half=True, classes=[target.get_number])
 
-        if len(results) != 0:
+        # 有查询到结果，走这
+        if len(results[0].boxes) != 0:
             # 单目标且仅有一个
-            if len(results) == 1 and results[0].boxes.conf.item() >= threshold:
-                return results[0].boxes.conf.item(), center(results[0].boxes.xyxy[0].tolist())
-            # 单目标但是有多个
-            elif len(results) > 1 and is_one is True and results[0].boxes.conf.item() >= threshold:
-                return results[0].boxes.conf.item(), center(results[0].boxes.xyxy[0].tolist())
+            if len(results[0].boxes) == 1:
+                if results[0].boxes[0].conf[0].item() >= threshold:
+                    return results[0].boxes[0].conf[0].item(), center(results[0].boxes[0].xyxy[0].tolist())
+                elif can_zero is True:
+                    return 0, None
+            # 单目标但是有多个，返回第一个找到的即可
+            elif len(results[0].boxes) > 1 and is_one is False:
+                if results[0].boxes[0].conf[0].item() >= threshold:
+                    return results[0].boxes[0].conf[0].item(), center(results[0].boxes[0].xyxy[0].tolist())
+                elif can_zero is True:
+                    return 0, None
             else:
                 raise ValueError('检测到多个可匹配对象，但是处于单目标模式，无法做出选择')
+        # 查询不到结果，判断是否可以查询为0
         else:
             if can_zero:
                 return 0, None
@@ -141,15 +149,16 @@ class ImagePositioning:
         y_c = []
         # 解析所有感兴趣的对象，然后分别存储以用于后期预处理
         for result in results:
-            if result.names == target_a.name and result.boxes.conf.item() >= threshold:
-                x, y = center(result.boxes.xyxy[0].tolist())
-                y_a.append((x, y, result.names))
-            elif result.names == target_b.name and result.boxes.conf.item() >= threshold:
-                x, y = center(result.boxes.xyxy[0].tolist())
-                y_b.append((x, y, result.names))
-            elif result.names == target_c.name and result.boxes.conf.item() >= threshold:
-                x, y = center(result.boxes.xyxy[0].tolist())
-                y_c.append((x, y, result.names))
+            for box in result.boxes:
+                if box.cls[0].item() == target_a.get_number and box.conf[0].item() >= threshold:
+                    x, y = center(box.xyxy[0].tolist())
+                    y_a.append((x, y, box.id))
+                elif box.cls[0].item() == target_b.get_number and box.conf[0].item() >= threshold:
+                    x, y = center(box.xyxy[0].tolist())
+                    y_b.append((x, y, box.id))
+                elif box.cls[0].item() == target_c.get_number and box.conf[0].item() >= threshold:
+                    x, y = center(box.xyxy[0].tolist())
+                    y_c.append((x, y, box.id))
 
         if len(y_a) == 0:
             if can_zero_a is True:
@@ -168,17 +177,17 @@ class ImagePositioning:
 
         y_res_bc = y_b + y_c
         min_diff = None
-        min_diff_names = None
+        min_diff_number = None
         closest_center: tuple = (0, 0)
         for loc in y_res_bc:
             x, y, names = loc
-            diff = abs(y - y_a)
+            diff = abs(y - y_a[0][1])
             if min_diff is None or diff < min_diff:
                 min_diff = diff
-                min_diff_names = names
+                min_diff_number = names
                 closest_center = x, y
 
-        if min_diff_names == target_c.name:
+        if min_diff_number == target_c.get_number:
             raise RuntimeError(f'目标{target_a.get_desc_zn} 的传送点没开，因为检测到了：{target_c.get_desc_zn} 按钮')
 
         return closest_center
