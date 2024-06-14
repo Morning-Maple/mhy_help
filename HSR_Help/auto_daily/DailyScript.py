@@ -89,6 +89,7 @@ class DailyScript:
         """
         x, y = loc
         pg.click(round(self.w_left + x), round(self.w_top + y))
+        pg.move(-20, 0)
 
     def game_window_set(self):
         """配置窗口位置
@@ -480,7 +481,7 @@ class DailyScript:
 
         def last_mode_set():
             """为每个模式的最底层目标进行赋值"""
-            match mode:
+            match mode.__class__:
                 case GMT.NZHEJMode:
                     # 底部是信用点（钱）
                     return Types.NZHEJ_Q
@@ -526,6 +527,7 @@ class DailyScript:
 
     def enter_mode(self):
         """进入挑战"""
+        time.sleep(2)
         screen = self.screenshot()
         _, loc = self._ip.target_prediction(screen, Types.button_challenge)
         self.click(loc)
@@ -625,10 +627,12 @@ class DailyScript:
 
     def battle_again(self):
         """再次挑战"""
-        time.sleep(2)
-        for _ in range(4):
+        # TODO 此方法检测置信度过低，后续考虑增大相关样本训练，目前以降低匹配度以进行过渡
+        time.sleep(3)
+        for _ in range(8):
+            time.sleep(0.5)
             screen = self.screenshot()
-            rel, loc = self._ip.target_prediction(screen, Types.button_again, threshold=0.5)
+            rel, loc = self._ip.target_prediction(screen, Types.button_again, threshold=0.3)
             if rel != 0:
                 self.click(loc)
                 break
@@ -665,6 +669,6 @@ class DailyScript:
 
 if __name__ == "__main__":
     # DailyScript(True).run_script()
-    DailyScript().run_script()
+    DailyScript(True).run_script()
     # DailyScript(True).mouse_handle(MouseMode.RIGHT, scroll=True, count=8)
     sys.exit()
