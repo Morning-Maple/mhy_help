@@ -330,8 +330,6 @@ class DailyScript:
         else:
             self.logs.info('实训领取成功，并且已经满了500实训点！')
             time.sleep(1)
-            pg.press('ESC')
-            time.sleep(1)
 
         pg.press('ESC')
         time.sleep(1.5)
