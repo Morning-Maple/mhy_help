@@ -34,6 +34,7 @@ class DailyScript:
     _double_speed = False
     _screen_shot: ScreenShot = None
     _ip = None
+    _pre = False
 
     user_config = None
     logs = None
@@ -50,6 +51,7 @@ class DailyScript:
         self._screen_shot = ScreenShot(self.region)
         self.game_window_set()
         self._ip = ImagePositioning()
+        self._pre = mode  # True就是开发模式，处于DEBUG状态
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -137,6 +139,9 @@ class DailyScript:
             if self.user_config["project"]["xunLi"] == 1:
                 self.xun_li()
         except Exception as e:
+            if self._pre:
+                # 开发测试模式下异常需要直接抛出以定位问题位置
+                raise e
             self.logs.info(e)
 
     def wei_tuo(self):
@@ -154,7 +159,7 @@ class DailyScript:
         screen = self.screenshot()
         rel, loc = self._ip.target_prediction(screen, Types.button_weituo)
         self.click(loc)
-        time.sleep(1.5)
+        time.sleep(2)
 
         # 委托领取
         screen = self.screenshot()
@@ -163,7 +168,7 @@ class DailyScript:
             self.logs.info('无委托需要被领取！')
         else:
             self.click(loc)
-            time.sleep(1)
+            time.sleep(1.5)
 
             # 再次派遣
             screen = self.screenshot()
@@ -198,7 +203,7 @@ class DailyScript:
         if rel != 0:
             self.click(loc)
             self.logs.info("邮件领取成功!")
-            time.sleep(1)
+            time.sleep(1.5)
             pg.press('ESC')
         else:
             self.logs.info("无邮件可领取!")
@@ -310,16 +315,20 @@ class DailyScript:
                 break
 
         # 实训奖励领取
+        time.sleep(1)
         rel, loc = self._ip.target_prediction(screen, Types.button_shixun_get, can_zero=True, is_one=False)
         if rel != 0:
             self.click(loc)
+            time.sleep(1)
+            pg.press('ESC')
 
         # 判断实训是否已满，日志输出
+        time.sleep(1)
         rel, _ = self._ip.target_prediction(screen, Types.text_enough, can_zero=True, is_one=False)
         if rel == 0:
-            self.logs('实训领取成功，但仍”>未满<“500实训点！')
+            self.logs.info('实训领取成功，但仍”>未满<“500实训点！')
         else:
-            self.logs('实训领取成功，并且已经满了500实训点！')
+            self.logs.info('实训领取成功，并且已经满了500实训点！')
             time.sleep(1)
             pg.press('ESC')
             time.sleep(1)
@@ -465,13 +474,34 @@ class DailyScript:
         Args:
             mode(GMT.NZHEJMode | GMT.NZHECMode | GMT.NZXYMode | GMT.QSSDMode | GMT.LZYXMode): 模式小类枚举
         """
+
+        def last_mode_set():
+            """为每个模式的最底层目标进行赋值"""
+            match mode:
+                case GMT.NZHEJMode:
+                    # 底部是信用点（钱）
+                    return Types.NZHEJ_Q
+                case GMT.NZHECMode:
+                    # 底部是虚无丹鼎司的行迹材料
+                    return GMT.NZHECMode.XW_DDS.get_types
+                case GMT.NZXYMode:
+                    # 底部是突破素材副本职司之形
+                    return GMT.NZXYMode.ZS.get_types
+                case GMT.QSSDMode:
+                    # 底部是遗器副本死水钟表匠套
+                    return GMT.QSSDMode.MQ.get_types
+                case GMT.LZYXMode:
+                    # 底部是周本尘梦的赞礼
+                    return GMT.LZYXMode.CMDZL.get_types
+
+        detail_types: Types = last_mode_set()
+
         find = 0
-        detail_types: Types
         while True:
             find += 1
             screen = self.screenshot()
             loc = self._ip.target_prediction_one_to_many(
-                screen, mode.get_types, Types.button_teleport, Types.button_follow, 0.9, True)
+                screen, mode.get_types, Types.button_teleport, Types.button_follow, threshold=0.9, can_zero_a=True)
             if loc[0] == 0:
                 self.mouse_handle(MouseMode.RIGHT, scroll=True)
             else:
@@ -481,30 +511,15 @@ class DailyScript:
 
             # 如果检测到底部了还没找到，并且检测轮次，则只检测多一次，提高响应
             screen = self.screenshot()
-            match mode:
-                case GMT.NZHEJMode:
-                    # 底部是信用点（钱）
-                    detail_types = Types.NZHEJ_Q
-                case GMT.NZHECMode:
-                    # 底部是虚无丹鼎司的行迹材料
-                    detail_types = GMT.NZHECMode.XW_DDS.get_types
-                case GMT.NZXYMode:
-                    # 底部是突破素材副本职司之形
-                    detail_types = GMT.NZXYMode.ZS.get_types
-                case GMT.QSSDMode:
-                    # 底部是遗器副本死水钟表匠套
-                    detail_types = GMT.QSSDMode.MQ.get_types
-                case GMT.LZYXMode:
-                    # 底部是周本尘梦的赞礼
-                    detail_types = GMT.LZYXMode.CMDZL.get_types
-
-            rel, _ = self._ip.target_prediction(screen, detail_types, can_zero=True, threshold=0.9)
+            rel, _ = self._ip.target_prediction(screen, detail_types, threshold=0.9, can_zero=True)
             if rel != 0 and find < 16:
                 find = 16
                 continue
 
             if find >= 16:
                 raise ValueError(f'找不到模式:{mode.get_desc}！')
+
+        time.sleep(4)
 
     def enter_mode(self):
         """进入挑战"""
@@ -524,10 +539,18 @@ class DailyScript:
         Returns:
             bool: True，如果体力不足，否则返回False
         """
+        time.sleep(2)
         screen = self.screenshot()
         rel, _ = self._ip.target_prediction(screen, Types.text_no_power, can_zero=True, threshold=0.8)
         time.sleep(1)
-        return rel == 0
+        if rel != 0:
+            screen = self.screenshot()
+            _, loc = self._ip.target_prediction(screen, Types.button_cancel)
+            self.click(loc)
+            time.sleep(1)
+            return True
+        else:
+            return False
 
     def use_fuel(self):
         """使用体力药"""
@@ -584,12 +607,13 @@ class DailyScript:
             screen = self.screenshot()
             # 挑战成功
             rel, _ = self._ip.target_prediction(screen, Types.text_success, can_zero=True)
-            if rel == 0:
+            if rel != 0:
+                time.sleep(2)
                 return True
 
             # 挑战失败
             rel, _ = self._ip.target_prediction(screen, Types.text_fail, can_zero=True)
-            if rel == 0:
+            if rel != 0:
                 self.logs.info('怎么回事？你没打过啾！')
                 return False
             time.sleep(2)
@@ -598,10 +622,13 @@ class DailyScript:
 
     def battle_again(self):
         """再次挑战"""
-        time.sleep(1)
-        screen = self.screenshot()
-        _, loc = self._ip.target_prediction(screen, Types.button_again)
-        self.click(loc)
+        time.sleep(2)
+        for _ in range(4):
+            screen = self.screenshot()
+            rel, loc = self._ip.target_prediction(screen, Types.button_again, threshold=0.5)
+            if rel != 0:
+                self.click(loc)
+                break
 
     def mouse_handle(self, mode: MouseMode, direction: ScrollDirection = ScrollDirection.DOWN, scroll=False, count=8):
         """鼠标事件处理
@@ -630,9 +657,11 @@ class DailyScript:
                 standard = -standard
             for _ in range(count):
                 pg.scroll(standard)
+            time.sleep(1)
 
 
 if __name__ == "__main__":
     # DailyScript(True).run_script()
-    DailyScript(True).mouse_handle(MouseMode.RIGHT, scroll=True, count=8)
+    DailyScript().run_script()
+    # DailyScript(True).mouse_handle(MouseMode.RIGHT, scroll=True, count=8)
     sys.exit()
