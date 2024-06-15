@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPus
 
 import GameModeTypes as GMT
 import DailyScript as Script
+import utils.ConfigValueCheck as Check
 
 bat_process: multiprocessing
 is_second_threading = True  # 日志读取线程是否开启
@@ -295,7 +296,7 @@ class MainWindow(QMainWindow):
 
     def save_config(self):
         """保存配置"""
-
+        self.logger.info('校验配置中...')
         # 额外功能
         # self.config["lazyMan"] = 1 if self.lazy_man.isChecked() else 0
         # self.config["useFuel"] = 1 if self.use_fuel.isChecked() else 0
@@ -331,12 +332,25 @@ class MainWindow(QMainWindow):
                     }
                     self.config['mode'].append(mode_entry)
 
-        # 将配置保存到文件
+        # 配置文件检查
+        with open('config/temp.json', 'w', encoding='utf-8') as f:
+            json.dump(self.config, f, indent=4)
+            f.flush()
+
+        try:
+            Check.check_config()
+        except Exception as e:
+            self.logger.warning(e)
+            return
+        finally:
+            os.remove('config/temp.json')
+
+        # 把通过校验的配置保存到文件
         with open('config/config.json', 'w', encoding='utf-8') as f:
             json.dump(self.config, f, indent=4)
             f.flush()
 
-        self.logger.info('成功保存设置')
+        self.logger.info('校验通过，成功保存设置')
 
     def start_execution(self):
         """开始执行脚本"""

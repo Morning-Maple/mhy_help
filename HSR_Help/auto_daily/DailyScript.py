@@ -10,6 +10,7 @@ from newTypes import Types
 from utils.ScreenShot import ScreenShot
 from utils.ImagePositioning import ImagePositioning
 import GameModeTypes as GMT
+import utils.ConfigValueCheck as Check
 
 
 class MouseMode(Enum):
@@ -57,6 +58,7 @@ class DailyScript:
             self._screen_shot = ScreenShot(self.region)
             self.game_window_set()
             self._ip = ImagePositioning(mode)
+            Check.check_config("config")
             self._pre = mode  # True就是开发模式，处于DEBUG状态
             self.logs.info("初始化完毕，正在执行！")
         except Exception as e:

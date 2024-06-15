@@ -28,13 +28,13 @@ import json
 import HSR_Help.auto_daily.Types as Types
 
 
-def check_config():
+def check_config(file_name="temp"):
     """
     检查配置文件的合法性
     Returns:
         bool: True如果合法，否则返回False
     """
-    with open('config/config.json', 'r', encoding='utf-8') as f:
+    with open(f'config/{file_name}.json', 'r', encoding='utf-8') as f:
         config = json.load(f)
 
     check_dict = {
