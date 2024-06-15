@@ -27,8 +27,6 @@ import json
 
 import HSR_Help.auto_daily.Types as Types
 
-rounds_limit = False
-
 
 def check_config():
     """
@@ -74,7 +72,8 @@ def check_config():
     if project is None:
         raise IOError('无法获取配置中的项目类')
 
-    for item in project:
+    project_len = len(project)
+    for index, item in enumerate(project, start=1):
         mode = item["mode"]  # 目标副本
         detail = item["detail"]  # 副本细节
         rounds = item["round"]  # 次数
@@ -82,31 +81,30 @@ def check_config():
         mode1 = mode.split('.')[2]
         detail1 = detail.split('.')[2]
 
-        modes_check(mode1, detail1, rounds)
+        modes_check(mode1, detail1, rounds, index, project_len)
 
     return True
 
 
-def modes_check(mode: str, detail: str, rounds: int):
+def modes_check(mode: str, detail: str, rounds: int, current_times: int, total_times: int):
     """
     模式和挑战次数合法性校验
     Args:
         mode(str): 挑战模式（大类）
         detail(str): 挑战模式（小类）
         rounds(int): 挑战次数
+        current_times(int): 当初循环的轮次
+        total_times(int): 总循环轮次
     """
-    global rounds_limit
     try:
         _ = Types.ModeType[mode]
     except KeyError:
         raise ValueError(f'模式不合法，{mode}不在可选范围内')
 
-    if rounds == 0:
-        if rounds_limit is True:
-            raise ValueError('挑战轮次不合法，设置了超过两个的轮次为0的副本')
-        rounds_limit = True
     if rounds < 0:
         raise ValueError('不合法的挑战次数，值必须大于等于0')
+    elif rounds == 0 and current_times != total_times:
+        raise ValueError('不允许在最后一个副本以外设置回合数为：0')
 
     match mode:
         case 'NZHEJ':
