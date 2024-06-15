@@ -6,11 +6,12 @@ import time
 from datetime import datetime
 
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, \
     QComboBox, QLabel, QGridLayout, QCheckBox, QSpinBox, QScrollArea
 
 import GameModeTypes as GMT
-import DailyScript as d
+import DailyScript as Script
 
 bat_process: multiprocessing
 is_second_threading = True  # 日志读取线程是否开启
@@ -19,7 +20,7 @@ is_execution_threading = False  # 获取脚本执行情况线程是否开启
 
 def execution():
     """真正执行脚本的进程"""
-    d.DailyScript().run_script()
+    Script.DailyScript().run_script()
 
 
 class MainWindow(QMainWindow):
@@ -52,8 +53,11 @@ class MainWindow(QMainWindow):
         # 设置主窗口的布局
         self.central_widget.setLayout(self.main_layout)
 
-        # 设置窗口标题和初始大小
-        self.setWindowTitle("控制面板")
+        # 设置窗口标题、图标和初始大小
+        self.setWindowTitle("星铁自动化日常控制面板 - By Morning_Maple")
+        icon = QIcon()
+        icon.addPixmap(QPixmap("ico/ico.png"))
+        self.setWindowIcon(icon)
         self.resize(900, 600)
 
         bat_process = None
@@ -92,21 +96,66 @@ class MainWindow(QMainWindow):
         checkbox_group_layout.addWidget(self.fun6)
         left_layout.addLayout(checkbox_group_layout, 1, 0)
 
-        # 副本为['侵蚀隧洞', '历战余响']时是否需要暂停以查看遗器属性
-        fb_extra_layout = QHBoxLayout()
-        self.fb_extra_func = QCheckBox("是否需要暂停查看遗器属性？（仅限侵蚀隧洞和历战余响，一秒内双击空格以继续）")
-        self.fb_extra_func.setChecked(self.config["waitCheck"] == 1)
-        fb_extra_layout.addWidget(self.fb_extra_func)
-        left_layout.addLayout(fb_extra_layout, 2, 0)
+        # 额外功能
+        extra_layout = QVBoxLayout()
+        extra_label = QLabel("额外功能：")
+
+        # self.lazy_man = QCheckBox("超级懒人模式[不可用]")
+        # self.lazy_man.setChecked(self.config["lazyMan"] == 1)
+        #
+        # self.use_fuel = QCheckBox("使用燃料")
+        # self.use_fuel.setChecked(self.config["useFuel"] == 1)
+        # fuel_label = QLabel("可支配的燃料数目：")
+        # self.fuel_use_quantity = QSpinBox()
+        # self.fuel_use_quantity.setValue(self.config["fuelUseQuantity"])
+        # self.fuel_use_quantity.setFixedSize(100, 20)
+        #
+        # self.use_extra_fuel = QCheckBox("使用后备开拓力")
+        # self.use_extra_fuel.setChecked(self.config["useExtraFuel"] == 1)
+        # extra_fuel_label = QLabel("可支配的后备开拓力：")
+        # self.extra_fuel_use_quantity = QSpinBox()
+        # self.extra_fuel_use_quantity.setFixedSize(100, 20)
+        # self.extra_fuel_use_quantity.setValue(self.config["extraFuelUseQuantity"])
+
+        self.wait_check = QCheckBox("是否需要暂停查看遗器属性？（仅限侵蚀隧洞和历战余响，一秒内双击空格以继续）")
+        self.wait_check.setChecked(self.config["waitCheck"] == 1)
+
+        extra_layout.addWidget(extra_label)
+        # extra_layout.addWidget(self.lazy_man)
+
+        # fuel_layout = QHBoxLayout()
+        # temp_layout = QHBoxLayout()
+        # temp_layout.addWidget(fuel_label)
+        # temp_layout.addWidget(self.fuel_use_quantity)
+        # fuel_layout.addWidget(self.use_fuel)
+        # fuel_layout.addLayout(temp_layout)
+        # extra_layout.addLayout(fuel_layout)
+        #
+        # extra_fuel_layout = QHBoxLayout()
+        # temp_layout = QHBoxLayout()
+        # temp_layout.addWidget(extra_fuel_label)
+        # temp_layout.addWidget(self.extra_fuel_use_quantity)
+        # extra_fuel_layout.addWidget(self.use_extra_fuel)
+        # extra_fuel_layout.addLayout(temp_layout)
+        # extra_layout.addLayout(extra_fuel_layout)
+
+        extra_layout.addWidget(self.wait_check)
+
+        left_layout.addLayout(extra_layout, 2, 0)
 
         # 副本挑战被选中的时候出现复选框
+        tip_label = QLabel("执行顺序ⓘ")
+        tip_label.setToolTip("由下至上执行！")
         self.add_button = QPushButton("新增")
         self.add_button.setEnabled(self.config["project"]["fuBen"] == 1)
         self.remove_all_button = QPushButton("去除全部")
         self.remove_all_button.setEnabled(self.config["project"]["fuBen"] == 1)
         fb_buttons_layout = QHBoxLayout()
-        fb_buttons_layout.addWidget(self.add_button)
-        fb_buttons_layout.addWidget(self.remove_all_button)
+        fb_buttons_layout.addWidget(tip_label)
+        temp_layout = QHBoxLayout()
+        temp_layout.addWidget(self.add_button)
+        temp_layout.addWidget(self.remove_all_button)
+        fb_buttons_layout.addLayout(temp_layout)
         left_layout.addLayout(fb_buttons_layout, 3, 0)
 
         challenge_container = QWidget()
@@ -172,6 +221,11 @@ class MainWindow(QMainWindow):
         spinbox.setEnabled(True)
         remove_button = QPushButton("去除")
 
+        dropdown_a.setFixedSize(100, 25)
+        dropdown_b.setFixedSize(200, 25)
+        spinbox.setFixedSize(50, 25)
+        remove_button.setFixedSize(70, 25)
+
         for mode in GMT.ModeType:
             dropdown_a.addItem(mode.desc, mode)  # 使用枚举的名称作为显示文本，枚举本身作为数据
 
@@ -196,12 +250,6 @@ class MainWindow(QMainWindow):
                     for detail in GMT.LZYXMode:
                         dropdown_b.addItem(detail.desc, detail)
 
-            dropdown_b.setEnabled(index > 0)
-            spinbox.setEnabled(index > 0)
-
-        dropdown_a.currentIndexChanged.connect(dropdown_a_changed)
-
-        def dropdown_a_changed(index):
             dropdown_b.setEnabled(index > 0)
             spinbox.setEnabled(index > 0)
 
@@ -246,8 +294,13 @@ class MainWindow(QMainWindow):
     def save_config(self):
         """保存配置"""
 
-        # 是否需要暂停查看遗器属性
-        self.config["waitCheck"] = 1 if self.fb_extra_func.isChecked() else 0
+        # 额外功能
+        # self.config["lazyMan"] = 1 if self.lazy_man.isChecked() else 0
+        # self.config["useFuel"] = 1 if self.use_fuel.isChecked() else 0
+        # self.config["fuelUseQuantity"] = self.fuel_use_quantity.value()
+        # self.config["useExtraFuel"] = 1 if self.use_extra_fuel.isChecked() else 0
+        # self.config["extraFuelUseQuantity"] = self.extra_fuel_use_quantity.value()
+        self.config["waitCheck"] = 1 if self.wait_check.isChecked() else 0
 
         # 项目
         self.config["project"] = {
@@ -261,7 +314,7 @@ class MainWindow(QMainWindow):
 
         # 副本挑战的配置
         self.config['mode'] = []
-        for i2 in range(self.challenge_layout.count()):
+        for i2 in range(self.challenge_layout.count() - 1, -1, -1):
             layout_item = self.challenge_layout.itemAt(i2)
             if layout_item.layout() is not None:
                 layout = layout_item.layout()
@@ -296,6 +349,7 @@ class MainWindow(QMainWindow):
         # 重置状态(顺序别换，不然容易导致第二线程重置is_execution_threading的值)
         is_execution_threading = True
 
+        self.logger.info("初始化脚本模型中，请稍等...")
         bat_process = multiprocessing.Process(target=execution)
         bat_process.start()
 
