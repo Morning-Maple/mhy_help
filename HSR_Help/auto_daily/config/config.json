@@ -2,23 +2,37 @@
     "mode": [
         {
             "mode": "GMT.ModeType.NZHEC",
-            "detail": "GMT.NZHECMode.XW_DDS",
-            "round": 6
+            "detail": "GMT.NZHECMode.CH_ZYCD",
+            "round": 0
+        },
+        {
+            "mode": "GMT.ModeType.QSSD",
+            "detail": "GMT.QSSDMode.RZ",
+            "round": 0
         },
         {
             "mode": "GMT.ModeType.NZHEC",
-            "detail": "GMT.NZHECMode.CH_KLKYSLY",
-            "round": 1
+            "detail": "GMT.NZHECMode.TX_JXJL",
+            "round": 0
+        },
+        {
+            "mode": "GMT.ModeType.NZHEC",
+            "detail": "GMT.NZHECMode.TX_BRMJD_MJ",
+            "round": 0
         }
     ],
-    "waitCheck": 1,
+    "waitCheck": 0,
+    "lazyMan": 0,
     "useFuel": 0,
+    "fuelUseQuantity": 1,
+    "useExtraFuel": 0,
+    "extraFuelUseQuantity": 60,
     "project": {
         "weiTuo": 0,
         "email": 1,
-        "zhuZhan": 1,
-        "fuBen": 1,
+        "zhuZhan": 0,
+        "fuBen": 0,
         "shiXun": 0,
-        "xunLi": 1
+        "xunLi": 0
     }
 }
