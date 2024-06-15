@@ -56,6 +56,7 @@ class DailyScript:
         self.game_window_set()
         self._ip = ImagePositioning(mode)
         self._pre = mode  # True就是开发模式，处于DEBUG状态
+        self.logs.info("初始化完毕，正在执行！")
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -630,7 +631,6 @@ class DailyScript:
 
     def battle_again(self):
         """再次挑战"""
-        # TODO 此方法检测置信度过低，后续考虑增大相关样本训练，目前以降低匹配度以进行过渡
         time.sleep(3)
         for _ in range(8):
             time.sleep(0.5)
@@ -670,8 +670,8 @@ class DailyScript:
             time.sleep(1)
 
 
-if __name__ == "__main__":
-    # DailyScript(True).run_script()
-    DailyScript(True).run_script()
-    # DailyScript(True).mouse_handle(MouseMode.RIGHT, scroll=True, count=8)
-    sys.exit()
+# if __name__ == "__main__":
+#     # DailyScript(True).run_script()
+#     DailyScript(True).run_script()
+#     # DailyScript(True).mouse_handle(MouseMode.RIGHT, scroll=True, count=8)
+#     sys.exit()
