@@ -144,22 +144,34 @@ class DailyScript:
 
         try:
             if self.user_config["project"]["weiTuo"] == 1:
+                self.logs.info(">>开始执行功能：委托派遣")
                 self.wei_tuo()
+                self.logs.info(">>>执行结束：委托派遣")
 
             if self.user_config["project"]["email"] == 1:
+                self.logs.info(">>开始执行功能：邮件领取")
                 self.email()
+                self.logs.info(">>>执行结束：邮件领取")
 
             if self.user_config["project"]["zhuZhan"] == 1:
+                self.logs.info(">>开始执行功能：助战奖励领取")
                 self.help_money()
+                self.logs.info(">>>执行结束：助战奖励领取")
 
             if self.user_config["project"]["fuBen"] == 1:
+                self.logs.info(">>开始执行功能：副本挑战")
                 self.fu_ben()
+                self.logs.info(">>>执行结束：副本挑战")
 
             if self.user_config["project"]["shiXun"] == 1:
+                self.logs.info(">>开始执行功能：实训点领取")
                 self.shi_xun()
+                self.logs.info(">>>执行结束：实训点领取")
 
             if self.user_config["project"]["xunLi"] == 1:
+                self.logs.info(">>开始执行功能：无名勋礼领取")
                 self.xun_li()
+                self.logs.info(">>>执行结束：无名勋礼领取")
         except Exception as e:
             if self._pre:
                 # 开发测试模式下异常需要直接抛出以定位问题位置

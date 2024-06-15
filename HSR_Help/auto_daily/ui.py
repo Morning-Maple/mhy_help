@@ -435,6 +435,7 @@ class MainWindow(QMainWindow):
             if is_execution_threading and not bat_process.is_alive():
                 self.on_execution_finished()
                 self.logger.info('本次脚本执行完成！')
+                self.logger.info('>>>>> ＜(´o o`)＞ <<<<<')
                 is_execution_threading = False
 
             time.sleep(0.2)  # 每0.2秒更新一次
