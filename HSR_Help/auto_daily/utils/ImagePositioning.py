@@ -76,13 +76,13 @@ class ImagePositioning:
             cls._instance = object.__new__(cls)
         return cls._instance
 
-    def target_prediction(self, screen: cv2.Mat, target: Types, threshold=0.7, can_zero=False, is_one=True):
+    def target_prediction(self, screen: cv2.Mat, target: Types, threshold=None, can_zero=False, is_one=True):
         """获取单个目标的中心位置
         获取单个目标在图片的中心位置
         Args:
             screen: 待检测的图像
             target: 感兴趣的目标
-            threshold: 阈值
+            threshold: 阈值，不填则默认不使用阈值
             can_zero: 检测为0是否需要抛出移除
             is_one: 是否为单个目标(单目标存在多个且均可被选，请置为True)
         Returns:
@@ -94,6 +94,9 @@ class ImagePositioning:
             raise ValueError('不合法的目标值')
         results = self._model.predict(screen, half=True, classes=[target.get_number], verbose=self._verbose)
 
+        # 不设默认阈值，直接YOLO直出
+        if threshold is None:
+            threshold = 0
         # 有查询到结果，走这
         if len(results[0].boxes) != 0:
             # 单目标且仅有一个
