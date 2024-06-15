@@ -97,6 +97,9 @@ class DailyScript:
         """
         game_window = gw.getWindowsWithTitle('崩坏：星穹铁道')[0]
 
+        if game_window is None:
+            raise RuntimeError('找不到游戏窗口！')
+
         if not game_window.isActive:
             # 防止最小化，同时激活窗口
             game_window.restore()
