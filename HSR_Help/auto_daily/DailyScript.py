@@ -35,6 +35,7 @@ class DailyScript:
     _screen_shot: ScreenShot = None
     _ip = None
     _pre = False
+    _init_success = True
 
     user_config = None
     logs = None
@@ -50,13 +51,20 @@ class DailyScript:
         Args:
             mode(bool): True为开发模式，以DEBUG形式输出，False则是线上版本环境
         """
-        self.config_set()
-        self.logs_set(mode)
-        self._screen_shot = ScreenShot(self.region)
-        self.game_window_set()
-        self._ip = ImagePositioning(mode)
-        self._pre = mode  # True就是开发模式，处于DEBUG状态
-        self.logs.info("初始化完毕，正在执行！")
+        try:
+            self.config_set()
+            self.logs_set(mode)
+            self._screen_shot = ScreenShot(self.region)
+            self.game_window_set()
+            self._ip = ImagePositioning(mode)
+            self._pre = mode  # True就是开发模式，处于DEBUG状态
+            self.logs.info("初始化完毕，正在执行！")
+        except Exception as e:
+            if self._pre:
+                # 开发测试模式下异常需要直接抛出以定位问题位置
+                raise e
+            self.logs.warning(e)
+            self._init_success = False
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -96,11 +104,12 @@ class DailyScript:
         """配置窗口位置
         首次会初始化窗口位置的值，如果再次调用则会检测窗口是否有移动，有则会更新窗口位置数据
         """
-        game_window = gw.getWindowsWithTitle('崩坏：星穹铁道')[0]
+        game_window = gw.getWindowsWithTitle('崩坏：星穹铁道')
 
-        if game_window is None:
+        if game_window is None or len(game_window) <= 0:
             raise RuntimeError('找不到游戏窗口！')
 
+        game_window = game_window[0]
         if not game_window.isActive:
             # 防止最小化，同时激活窗口
             game_window.restore()
@@ -125,6 +134,8 @@ class DailyScript:
 
     def run_script(self):
         """脚本运行"""
+        if self._init_success is False:
+            return
         time.sleep(0.5)
         pg.press('M')
         time.sleep(1.5)
@@ -151,7 +162,7 @@ class DailyScript:
             if self._pre:
                 # 开发测试模式下异常需要直接抛出以定位问题位置
                 raise e
-            self.logs.info(e)
+            self.logs.warning(e)
 
     def wei_tuo(self):
         """委托派遣

@@ -24,21 +24,33 @@ def setup_logger(debug_mode=False):
 
     # 配置文件输出（按天轮转，大小不超过16MB，多进程支持）
     common_log_file = os.path.join(common_log_dir, f"logs_{today}.log")
+    common_log_format = "{time:YYYY-MM-DD HH:mm:ss} | {level} ：{message}\n"
+
+    def handle_level(record):
+        if record["level"].name == "INFO":
+            return "{time:YYYY-MM-DD HH:mm:ss} | 信息：{message}\n"
+        elif record["level"].name == "WARNING":
+            return "{time:YYYY-MM-DD HH:mm:ss} | >异常<：{message}\n"
+        return common_log_format
+
     logger.add(common_log_file,
                rotation="00:00",
                retention="15 days",
                compression=None,
                enqueue=True,
                filter=lambda record: record["level"].name in ["INFO", "WARNING"],
-               level="INFO")
+               level="INFO",
+               format=handle_level
+               )
 
-    # 配置崩溃日志输出（按运行次轮转）
+    # 配置详细日志输出（按运行次轮转）
     crash_log_file = os.path.join(crash_log_dir, f"crash_{today}.log")
     logger.add(crash_log_file,
-               rotation="8 MB",
-               retention=100,
+               rotation="00:00",
+               retention="15 days",
                compression="zip",
                enqueue=True,
-               level="ERROR")
+               level="DEBUG"
+               )
 
     return logger

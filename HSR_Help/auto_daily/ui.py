@@ -4,6 +4,7 @@ import os
 import threading
 import time
 from datetime import datetime
+from loguru import logger
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QIcon, QPixmap
@@ -18,6 +19,7 @@ is_second_threading = True  # 日志读取线程是否开启
 is_execution_threading = False  # 获取脚本执行情况线程是否开启
 
 
+@logger.catch
 def execution():
     """真正执行脚本的进程"""
     Script.DailyScript().run_script()
