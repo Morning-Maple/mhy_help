@@ -648,7 +648,7 @@ class DailyScript:
         for _ in range(8):
             time.sleep(0.5)
             screen = self.screenshot()
-            rel, loc = self._ip.target_prediction(screen, Types.button_again, threshold=0.3)
+            rel, loc = self._ip.target_prediction(screen, Types.button_again)
             if rel != 0:
                 self.click(loc)
                 break
