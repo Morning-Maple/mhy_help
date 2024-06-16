@@ -197,7 +197,7 @@ class DailyScript:
 
         # 委托领取
         screen = self.screenshot()
-        rel, loc = self._ip.target_prediction(screen, Types.button_receive_all)
+        rel, loc = self._ip.target_prediction(screen, Types.button_receive_all, can_zero=True)
         if rel == 0:
             self.logs.info('无委托需要被领取！')
         else:
@@ -663,6 +663,8 @@ class DailyScript:
             rel, loc = self._ip.target_prediction(screen, Types.button_again)
             if rel != 0:
                 self.click(loc)
+                time.sleep(0.5)
+                pg.move(0, 100)
                 break
 
     def mouse_handle(self, mode: MouseMode, direction: ScrollDirection = ScrollDirection.DOWN, scroll=False, count=8):
