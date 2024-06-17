@@ -25,7 +25,7 @@ xunLi: 是否执行无名勋礼任务进度和奖励的领取
 
 import json
 
-import HSR_Help.auto_daily.Types as Types
+import HSR_Help.auto_daily.GameModeTypes as Types
 
 
 def check_config(file_name="temp"):
@@ -60,6 +60,7 @@ def check_config(file_name="temp"):
             raise ValueError(f'{item_name}的值不能小于等于0')
 
     functions = config["project"]
+    need_check_fuBen = True
     if functions is None:
         raise ValueError("配置文件出错，找不到键名：project")
     for key, value in functions.items():
@@ -67,6 +68,12 @@ def check_config(file_name="temp"):
             raise ValueError(f'找不到键：{key}')
         if value not in [0, 1]:
             raise ValueError(f'{value}是不合法的值，它应该为[0, 1]')
+        if key == 'fuBen' and value == 0:
+            need_check_fuBen = False
+
+    # 如果没有开启副本功能，不检查副本内的规范，提高效率
+    if need_check_fuBen is False:
+        return True
 
     project = config["mode"]
     if project is None:

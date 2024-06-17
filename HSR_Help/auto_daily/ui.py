@@ -294,8 +294,13 @@ class MainWindow(QMainWindow):
                         widget_item.deleteLater()
                 layout.deleteLater()  # 删除布局
 
-    def save_config(self):
-        """保存配置"""
+    def save_config(self, is_run=False):
+        """保存配置
+        Args:
+            is_run(bool): 后续是否执行脚本运行
+        Returns:
+            bool: 如果保存失败，返回False，否则返回True
+        """
         self.logger.info('校验配置中...')
         # 额外功能
         # self.config["lazyMan"] = 1 if self.lazy_man.isChecked() else 0
@@ -341,7 +346,11 @@ class MainWindow(QMainWindow):
             Check.check_config()
         except Exception as e:
             self.logger.warning(e)
-            return
+            if is_run is True:
+                self.logger.warning('配置拒绝进行保存，脚本拒绝进行运行！')
+            else:
+                self.logger.warning('配置拒绝进行保存！')
+            return False
         finally:
             os.remove('config/temp.json')
 
@@ -351,12 +360,15 @@ class MainWindow(QMainWindow):
             f.flush()
 
         self.logger.info('校验通过，成功保存设置')
+        return True
 
     def start_execution(self):
         """开始执行脚本"""
         global bat_process, is_execution_threading
 
-        self.save_config()
+        success_pass = self.save_config(True)
+        if success_pass is False:
+            return
         self.logger.info("================")
         self.save_config_button.setEnabled(False)
         self.start_execution_button.setEnabled(False)
