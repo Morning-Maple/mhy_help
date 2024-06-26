@@ -93,6 +93,8 @@ class Types(Enum):
     text_no_power = (88, '开拓力补充')
     button_get_all = (89, '全部领取(邮件特供)')
     text_yueka = (90, '月卡标识')
+    QSSD_YQ = (91, '追击击破套')
+    NZHEC_ZS_PNKNDJY = (92, '智识_匹诺康尼大剧院')
 
     def __init__(self, number, desc_zn):
         self.number = number

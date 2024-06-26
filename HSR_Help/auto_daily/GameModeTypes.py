@@ -71,6 +71,7 @@ class NZHECMode(Enum):
     FR_BYTL = ('丰饶_边缘通路', T.NZHEC_FR_BYTL)
     FR_SY = ('丰饶_绥园', T.NZHEC_FR_SY)
     ZS_MDZ = ('智识_铆钉镇', T.NZHEC_ZS_MDZ)
+    ZS_PNKNDJY = ('智识_匹诺康尼大剧院', T.NZHEC_ZS_PNKNDJY)
     TX_JXJL = ('同谐_机械聚落', T.NZHEC_TX_JXJL)
     TX_BRMJD_MJ = ('同谐_白日梦酒店_梦境', T.NZHEC_TX_BRMJD_MJ)
     XW_DKQ = ('虚无_大矿区', T.NZHEC_XW_DKQ)
@@ -138,6 +139,7 @@ class QSSDMode(Enum):
     YS = ('莳者信使套', T.QSSD_YS)
     YM = ('大公系囚套', T.QSSD_YM)
     MQ = ('死水钟表匠套', T.QSSD_MQ)
+    YQ = ('追击击破套', T.QSSD_YQ)
 
     def __init__(self, desc, types):
         self.desc = desc
