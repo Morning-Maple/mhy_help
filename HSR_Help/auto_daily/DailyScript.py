@@ -47,7 +47,7 @@ class DailyScript:
     w_height = 0
     region = (0, 0, 0, 0)
 
-    def __init__(self, mode: bool = False):
+    def __init__(self, mode: bool = True):
         """
         Args:
             mode(bool): True为开发模式，以DEBUG形式输出，False则是线上版本环境
@@ -424,7 +424,7 @@ class DailyScript:
         screen = self.screenshot()
         _, loc = self._ip.target_prediction(screen, Types.button_xunli_jiangli)
         self.click(loc)
-        time.sleep(1)
+        time.sleep(2)
 
         screen = self.screenshot()
         rel, loc = self._ip.target_prediction(screen, Types.button_receive_all, can_zero=True)
@@ -556,7 +556,7 @@ class DailyScript:
 
     def enter_mode(self):
         """进入挑战"""
-        time.sleep(2)
+        time.sleep(4)
         screen = self.screenshot()
         _, loc = self._ip.target_prediction(screen, Types.button_challenge)
         self.click(loc)
@@ -598,8 +598,8 @@ class DailyScript:
         Raise:
             RuntimeError: 没打过副本，挑战失败，超时
         """
-        progress = (count - 1, count)
-        rounds = progress[0]
+        progress = (0, count)
+        rounds = count
         logs_output = True
 
         # count为0则是一直挑战到体力不足为止
@@ -612,6 +612,12 @@ class DailyScript:
             res = self.battle_monitor()
             if res is False:
                 raise RuntimeError('副本挑战失败！')
+            else:
+                progress = (progress[0] + 1, count)
+
+            # 当前进行的轮次是最后一把，那么不需要体力检测和再次战斗，直接退出关卡即可
+            if progress[0] == count:
+                break
 
             # 再次战斗
             self.battle_again()
@@ -624,11 +630,11 @@ class DailyScript:
                     break
 
         # 退出副本，准备处理下一个挑战
-        time.sleep(1)
+        time.sleep(3)
         screen = self.screenshot()
-        _, loc = self._ip.target_prediction(screen, Types.button_leave, can_zero=True)
+        _, loc = self._ip.target_prediction(screen, Types.button_leave)
         self.click(loc)
-        time.sleep(8)
+        time.sleep(4)
 
     def battle_monitor(self):
         """战斗情况监测
