@@ -87,7 +87,7 @@ class Types(Enum):
     c_yaliluo6 = (82, '雅利洛六号')
     c_luofuxianzhou = (83, '罗浮仙舟')
     c_pinuokangni = (84, '匹诺康尼')
-    button_follow = (85, '跟踪')
+    button_follow = (85, '追踪')
     NZHEC_XL_SLDRSHXHC = (86, '巡猎_苏乐达热砂海选会场')
     NZXY_ZS = (87, '职司之形')
     text_no_power = (88, '开拓力补充')
