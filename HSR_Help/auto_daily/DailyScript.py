@@ -333,7 +333,7 @@ class DailyScript:
         # 首次判断是否实训满，是则日志输出，然后直接返回
         rel, _ = self._ip.target_prediction(screen, Types.text_enough, can_zero=True, is_one=False)
         if rel != 0:
-            self.logs('实训已满，无需领取')
+            self.logs.info('实训已满，无需领取')
             pg.press('ESC')
             time.sleep(1.5)
             pg.press('ESC')
@@ -391,7 +391,7 @@ class DailyScript:
         screen = self.screenshot()
         _, loc = self._ip.target_prediction(screen, Types.button_xunli_renwu)
         self.click(loc)
-        time.sleep(1)
+        time.sleep(2)
 
         # --任务部分
         # 本周任务
