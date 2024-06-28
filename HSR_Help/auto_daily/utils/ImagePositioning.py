@@ -163,13 +163,13 @@ class ImagePositioning:
             for box in result.boxes:
                 if box.cls[0].item() == target_a.get_number and box.conf[0].item() >= threshold:
                     x, y = center(box.xyxy[0].tolist())
-                    y_a.append((x, y, box.id))
+                    y_a.append((x, y, box.cls[0].item()))
                 elif box.cls[0].item() == target_b.get_number and box.conf[0].item() >= threshold:
                     x, y = center(box.xyxy[0].tolist())
-                    y_b.append((x, y, box.id))
+                    y_b.append((x, y, box.cls[0].item()))
                 elif box.cls[0].item() == target_c.get_number and box.conf[0].item() >= threshold:
                     x, y = center(box.xyxy[0].tolist())
-                    y_c.append((x, y, box.id))
+                    y_c.append((x, y, box.cls[0].item()))
 
         if len(y_a) == 0:
             if can_zero_a is True:
@@ -192,7 +192,7 @@ class ImagePositioning:
         closest_center: tuple = (0, 0)
         for loc in y_res_bc:
             x, y, names = loc
-            diff = abs(y - y_a[0][1])
+            diff = abs(y - y_a[0][1])  # y_a[0][1]是为了得到(x, y, box.id)中的y的值
             if min_diff is None or diff < min_diff:
                 min_diff = diff
                 min_diff_number = names
