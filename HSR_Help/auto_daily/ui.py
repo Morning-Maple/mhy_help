@@ -9,7 +9,7 @@ from loguru import logger
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, \
-    QComboBox, QLabel, QGridLayout, QCheckBox, QSpinBox, QScrollArea
+    QComboBox, QLabel, QGridLayout, QCheckBox, QSpinBox, QScrollArea, QApplication
 
 import GameModeTypes as GMT
 import DailyScript as Script
@@ -301,7 +301,10 @@ class MainWindow(QMainWindow):
         Returns:
             bool: 如果保存失败，返回False，否则返回True
         """
+        self.save_config_button.setEnabled(False)
+        QApplication.processEvents()
         self.logger.info('校验配置中...')
+        time.sleep(1)
         # 额外功能
         # self.config["lazyMan"] = 1 if self.lazy_man.isChecked() else 0
         # self.config["useFuel"] = 1 if self.use_fuel.isChecked() else 0
@@ -350,6 +353,8 @@ class MainWindow(QMainWindow):
                 self.logger.warning('配置拒绝进行保存，脚本拒绝进行运行！')
             else:
                 self.logger.warning('配置拒绝进行保存！')
+
+            self.save_config_button.setEnabled(True)
             return False
         finally:
             os.remove('config/temp.json')
@@ -360,13 +365,16 @@ class MainWindow(QMainWindow):
             f.flush()
 
         self.logger.info('校验通过，成功保存设置')
+        self.save_config_button.setEnabled(True)
         return True
 
     def start_execution(self):
         """开始执行脚本"""
         global bat_process, is_execution_threading
 
+        self.start_execution_button.setEnabled(False)
         success_pass = self.save_config(True)
+        time.sleep(1)
         if success_pass is False:
             return
         self.logger.info("================")
